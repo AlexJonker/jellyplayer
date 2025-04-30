@@ -49,7 +49,8 @@ if not shows:
 
 print("\nTV Shows:")
 for idx, show in enumerate(shows, start=1):
-    print(f"{idx}. {show['Name']}")
+    watched = "✔" if show.get("UserData", {}).get("Played", False) else ""
+    print(f"{idx}. {show['Name']} {watched}")
 
 choice = int(input("\nPick a show: ")) - 1
 show_id = shows[choice]["Id"]
@@ -66,7 +67,8 @@ if not seasons:
 
 print("\nSeasons:")
 for idx, season in enumerate(seasons, start=1):
-    print(f"{idx}. {season['Name']}")
+    watched = "✔" if season.get("UserData", {}).get("Played", False) else ""
+    print(f"{idx}. {season['Name']} {watched}")
 
 season_choice = int(input("\nPick a season: ")) - 1
 season_id = seasons[season_choice]["Id"]
@@ -83,10 +85,12 @@ if not episodes:
 
 print("\nEpisodes:")
 for idx, episode in enumerate(episodes, start=1):
-    print(f"{idx}. {episode['Name']}")
+    watched = "✔" if episode.get("UserData", {}).get("Played", False) else ""
+    print(f"{idx}. {episode['Name']} {watched}")
 
 episode_choice = int(input("\nPick an episode: ")) - 1
 episode_id = episodes[episode_choice]["Id"]
+
 
 stream_url = f"{JELLYFIN_URL}/Items/{episode_id}/Download?api_key={token}"
 
