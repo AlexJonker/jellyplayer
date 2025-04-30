@@ -2,6 +2,11 @@
 
 JellyPlayer is a lightweight media player built with Python. It uses `mpv` for media playback.
 
+## Features
+
+- **Progress Reporting**: JellyPlayer tracks your playback progress and displays it in real-time.
+- **Resume Playback**: Start watching right where you left off, even after closing the application.
+
 ## Installation
 
 1. Clone the repository:
