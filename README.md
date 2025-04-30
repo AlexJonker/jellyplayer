@@ -1,13 +1,30 @@
 # JellyPlayer
 
-JellyPlayer is a lightweight media player built with Python. It uses `mpv` for media playback.
+JellyPlayer is a tui and user-friendly media player built with Python. It uses `mpv` for media playback.
 
 ## Features
 
-- **Progress Reporting**: JellyPlayer tracks your playback progress and displays it in real-time.
-- **Resume Playback**: Start watching right where you left off, even after closing the application.
+- **Real-Time Progress Tracking**: Keep track of your playback progress with real-time updates.
+- **Resume Playback**: Automatically pick up where you left off, even after closing the application.
 
 ## Installation
+
+### Option 1: Arch-Based Linux Distributions
+
+For Arch-based Linux distributions, you can install JellyPlayer directly from the AUR:
+```bash
+yay -S jellyplayer-git
+```
+
+
+### Option 2: Manual Installation
+
+Ensure `mpv` is installed on your system:
+
+- **Linux**: Install via your package manager, e.g., `yay -S mpv`.
+- **macOS**: Install via Homebrew, e.g., `brew install mpv`.
+- **Windows**: Download the installer from [mpv.io](https://mpv.io/installation/).
+
 
 1. Clone the repository:
     ```bash
@@ -20,25 +37,7 @@ JellyPlayer is a lightweight media player built with Python. It uses `mpv` for m
     pip install -r requirements.txt
     ```
 
-3. Ensure `mpv` is installed on your system:
-    - **Linux**: Install via your package manager, e.g., `yay -S mpv`.
-    - **macOS**: Install via Homebrew, e.g., `brew install mpv`.
-    - **Windows**: Download from [mpv.io](https://mpv.io/installation/).
-
-4. Alternatively, install JellyPlayer directly on Arch-based Linux distributions:
+3. Run JellyPlayer:
     ```bash
-    yay -S jellyplayer-git
+    python jellyplayer.py
     ```
-
-5. Build a standalone executable (optional):
-    ```bash
-    pyinstaller --onefile jellyplayer.py
-    ```
-    This will create an executable in `./dist/jellyplayer`.
-
-## Usage
-
-Run the application:
-```bash
-python jellyplayer.py
-```
