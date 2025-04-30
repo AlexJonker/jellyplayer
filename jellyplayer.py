@@ -79,20 +79,26 @@ except Exception as e:
 def display_menu(items, title, selected_index=0, status_msg=""):
     stdscr.clear()
     h, w = stdscr.getmaxyx()
-    
+
+    # Calculate the visible range of items
+    max_visible_items = h - 4  # Leave space for title and status message
+    start_index = max(0, selected_index - max_visible_items + 1)
+    end_index = min(len(items), start_index + max_visible_items)
+
     # Draw title with color
     if curses.has_colors():
         stdscr.addstr(0, (w - len(title)) // 2, title, curses.color_pair(3) | curses.A_BOLD)
     else:
         stdscr.addstr(0, (w - len(title)) // 2, title, curses.A_BOLD)
-    
+
     # Draw items
-    for idx, item in enumerate(items):
+    for idx, item in enumerate(items[start_index:end_index]):
+        actual_idx = start_index + idx
         is_watched = item.get("UserData", {}).get("Played", False)
-        item_text = f"> {item['Name']}" if idx == selected_index else f"  {item['Name']}"
-        
+        item_text = f"> {item['Name']}" if actual_idx == selected_index else f"  {item['Name']}"
+
         # Apply color and highlighting
-        if idx == selected_index:
+        if actual_idx == selected_index:
             if is_watched and curses.has_colors():
                 stdscr.addstr(idx + 2, 2, item_text, curses.A_REVERSE | curses.color_pair(1))
             else:
@@ -102,22 +108,23 @@ def display_menu(items, title, selected_index=0, status_msg=""):
                 stdscr.addstr(idx + 2, 2, item_text, curses.color_pair(1))
             else:
                 stdscr.addstr(idx + 2, 2, item_text)
-            
+
         # Add watched checkmark
         if is_watched:
             if curses.has_colors():
                 stdscr.addstr(idx + 2, w - 2, "✔", curses.color_pair(1))
             else:
                 stdscr.addstr(idx + 2, w - 2, "✔")
-    
+
     # Status message at bottom
     if status_msg:
         if curses.has_colors() and "Error" in status_msg:
-            stdscr.addstr(h-1, 0, status_msg, curses.color_pair(2))
+            stdscr.addstr(h - 1, 0, status_msg, curses.color_pair(2))
         else:
-            stdscr.addstr(h-1, 0, status_msg)
-    
+            stdscr.addstr(h - 1, 0, status_msg)
+
     stdscr.refresh()
+
 
 def select_from_list(items, title):
     selected_index = 0
