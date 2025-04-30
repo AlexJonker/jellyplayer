@@ -166,70 +166,29 @@ def get_playback_status():
         return not result["data"]  # Return True if playing, False if paused
     return None
 
-# === HIGH-PRECISION PROGRESS REPORTING ===
+# === SIMPLE PROGRESS REPORTING ===
 def report_progress():
-    last_reported_time = 0
-    last_reported_percentage = -1
-    last_status = None
-
-    # Get the total duration of the video in seconds
-    playback_info = requests.get(
-        f"{JELLYFIN_URL}/Users/{user_id}/Items/{episode_id}",
-        headers=headers
-    ).json()
-    total_duration_ticks = playback_info.get("RunTimeTicks", 0)
-    total_duration_seconds = total_duration_ticks / 10_000_000  # Convert ticks to seconds
-
-    if total_duration_seconds == 0:
-        print("⚠ Unable to determine total duration of the video.")
-        return
-
     while mpv_proc.poll() is None:  # While MPV is running
         try:
-            current_time = time.time()
             current_pos = get_position()
-            current_status = get_playback_status()
-
-            if current_pos is None:
-                time.sleep(0.1)
-                continue
-
-            # Calculate progress percentage
-            progress_percentage = (current_pos / total_duration_seconds) * 100
-
-            # Report progress only if percentage changes significantly or every second
-            if (current_time - last_reported_time >= 1.0 and
-                (abs(progress_percentage - last_reported_percentage) >= 1 or
-                 current_status != last_status)):
-
+            if current_pos is not None:
                 try:
                     requests.post(
                         f"{JELLYFIN_URL}/Sessions/Playing/Progress",
                         headers=headers,
                         json={
                             "ItemId": episode_id,
-                            "MediaSourceId": episode_id,
                             "PositionTicks": int(current_pos * 10_000_000),
-                            "IsPaused": not current_status if current_status is not None else False,
-                            "IsMuted": False,
-                            "VolumeLevel": 100,
-                            "PlayMethod": "DirectStream",
-                            "RepeatMode": "RepeatNone",
                         },
                         timeout=2  # Short timeout to prevent hanging
                     )
-                    last_reported_time = current_time
-                    last_reported_percentage = progress_percentage
-                    last_status = current_status
-                    print(f"↻ Progress: {progress_percentage:.1f}% ({'▶' if current_status else '⏸'})", end='\r')
+                    print(f"↻ Current progress: {current_pos:.1f} seconds", end='\r')
                 except requests.exceptions.RequestException as e:
                     print(f"⚠ Progress report failed: {e}")
-
-            time.sleep(0.1)  # Small sleep to prevent CPU overload
-
+            time.sleep(2)  # Report progress every 2 seconds
         except Exception as e:
             print(f"⚠ Unexpected error in progress reporting: {e}")
-            time.sleep(1)
+            time.sleep(2)
 
 progress_thread = threading.Thread(target=report_progress, daemon=True)
 progress_thread.start()
