@@ -25,6 +25,11 @@ JellyPlayer is a lightweight media player built with Python. It uses `mpv` for m
     - **macOS**: Install via Homebrew, e.g., `brew install mpv`.
     - **Windows**: Download from [mpv.io](https://mpv.io/installation/).
 
+4. Build a standalone executable (optional):
+    ```bash
+    pyinstaller --onefile jellyplayer.py
+    ```
+
 ## Usage
 
 Run the application:
