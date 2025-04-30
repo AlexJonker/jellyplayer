@@ -30,7 +30,6 @@ JellyPlayer is a lightweight media player built with Python. It uses `mpv` for m
     pyinstaller --onefile jellyplayer.py
     ```
     This will create an executable in `./dist/jellyplayer`.
-    ```
 
 ## Usage
 
