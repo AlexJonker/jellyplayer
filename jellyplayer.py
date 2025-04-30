@@ -305,7 +305,7 @@ if media_type == "Series":
         stdscr.refresh()
 
         seasons = requests.get(
-            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons?isSpecialSeason=false",
+            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons",
             headers=headers
         ).json()["Items"]
 
