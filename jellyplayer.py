@@ -22,6 +22,7 @@ if curses.has_colors():
     curses.start_color()
     curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Watched items
     curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)    # Error messages
+    curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)   # Menu headers
 
 load_dotenv()
 
@@ -79,8 +80,11 @@ def display_menu(items, title, selected_index=0, status_msg=""):
     stdscr.clear()
     h, w = stdscr.getmaxyx()
     
-    # Draw title
-    stdscr.addstr(0, (w - len(title)) // 2, title, curses.A_BOLD)
+    # Draw title with color
+    if curses.has_colors():
+        stdscr.addstr(0, (w - len(title)) // 2, title, curses.color_pair(3) | curses.A_BOLD)
+    else:
+        stdscr.addstr(0, (w - len(title)) // 2, title, curses.A_BOLD)
     
     # Draw items
     for idx, item in enumerate(items):
@@ -139,82 +143,112 @@ def select_from_list(items, title):
     
     return selected_index
 
-# === GET TV SHOWS ===
-try:
-    stdscr.addstr(0, 0, "Loading TV shows...", curses.A_BOLD)
-    stdscr.refresh()
+def select_media_type():
+    options = [
+        {"Name": "TV Shows", "Type": "Series"},
+        {"Name": "Movies", "Type": "Movie"}
+    ]
+    selected = select_from_list(options, "Select Media Type")
+    return options[selected]["Type"]
 
-    shows = requests.get(
-        f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Series&Recursive=true",
-        headers=headers
-    ).json()["Items"]
+# === MAIN MENU ===
+media_type = select_media_type()
 
-    if not shows:
+if media_type == "Series":
+    # === GET TV SHOWS ===
+    try:
+        stdscr.addstr(0, 0, "Loading TV shows...", curses.A_BOLD)
+        stdscr.refresh()
+
+        shows = requests.get(
+            f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Series&Recursive=true",
+            headers=headers
+        ).json()["Items"]
+
+        if not shows:
+            cleanup()
+            print("No shows found.")
+            exit()
+
+        selected_show = select_from_list(shows, "TV Shows")
+        show_id = shows[selected_show]["Id"]
+
+        # === GET SEASONS ===
+        stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
+        stdscr.refresh()
+
+        seasons = requests.get(
+            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons?isSpecialSeason=false",
+            headers=headers
+        ).json()["Items"]
+
+        if not seasons:
+            cleanup()
+            print("No seasons found.")
+            exit()
+
+        selected_season = select_from_list(seasons, "Seasons")
+        season_id = seasons[selected_season]["Id"]
+
+        # === GET EPISODES ===
+        stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
+        stdscr.refresh()
+
+        episodes = requests.get(
+            f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
+            headers=headers
+        ).json()["Items"]
+
+        if not episodes:
+            cleanup()
+            print("No episodes found.")
+            exit()
+
+        selected_episode = select_from_list(episodes, "Episodes")
+        item_id = episodes[selected_episode]["Id"]
+        item_name = episodes[selected_episode]["Name"]
+
+    except Exception as e:
         cleanup()
-        print("No shows found.")
-        exit()
+        raise
 
-    selected_show = select_from_list(shows, "TV Shows")
-    show_id = shows[selected_show]["Id"]
-except Exception as e:
-    cleanup()
-    raise
+elif media_type == "Movie":
+    # === GET MOVIES ===
+    try:
+        stdscr.addstr(0, 0, "Loading movies...", curses.A_BOLD)
+        stdscr.refresh()
 
-# === GET SEASONS ===
-try:
-    stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
-    stdscr.refresh()
+        movies = requests.get(
+            f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Movie&Recursive=true",
+            headers=headers
+        ).json()["Items"]
 
-    seasons = requests.get(
-        f"{JELLYFIN_URL}/Shows/{show_id}/Seasons?isSpecialSeason=false",
-        headers=headers
-    ).json()["Items"]
+        if not movies:
+            cleanup()
+            print("No movies found.")
+            exit()
 
-    if not seasons:
+        selected_movie = select_from_list(movies, "Movies")
+        item_id = movies[selected_movie]["Id"]
+        item_name = movies[selected_movie]["Name"]
+
+    except Exception as e:
         cleanup()
-        print("No seasons found.")
-        exit()
-
-    selected_season = select_from_list(seasons, "Seasons")
-    season_id = seasons[selected_season]["Id"]
-except Exception as e:
-    cleanup()
-    raise
-
-# === GET EPISODES ===
-try:
-    stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
-    stdscr.refresh()
-
-    episodes = requests.get(
-        f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
-        headers=headers
-    ).json()["Items"]
-
-    if not episodes:
-        cleanup()
-        print("No episodes found.")
-        exit()
-
-    selected_episode = select_from_list(episodes, "Episodes")
-    episode_id = episodes[selected_episode]["Id"]
-except Exception as e:
-    cleanup()
-    raise
+        raise
 
 # Clean up curses before starting playback
 cleanup()
 
 # === PLAYBACK CODE ===
 try:
-    stream_url = f"{JELLYFIN_URL}/Items/{episode_id}/Download?api_key={token}"
+    stream_url = f"{JELLYFIN_URL}/Items/{item_id}/Download?api_key={token}"
 
     # === START PLAYBACK SESSION ===
     requests.post(
         f"{JELLYFIN_URL}/Sessions/Playing",
         headers=headers,
         json={
-            "ItemId": episode_id,
+            "ItemId": item_id,
             "CanSeek": True,
             "IsPaused": True,
             "IsMuted": False,
@@ -226,14 +260,14 @@ try:
     # === MPV IPC ===
     ipc_path = tempfile.NamedTemporaryFile(delete=False).name
     playback_info = requests.get(
-        f"{JELLYFIN_URL}/Users/{user_id}/Items/{episode_id}",
+        f"{JELLYFIN_URL}/Users/{user_id}/Items/{item_id}",
         headers=headers
     ).json()
 
     start_position_ticks = playback_info.get("UserData", {}).get("PlaybackPositionTicks", 0)
     start_position_seconds = start_position_ticks // 10_000_000  # Convert ticks to seconds
 
-    print(f"Starting playback from {start_position_seconds} seconds...")
+    print(f"Starting playback of '{item_name}' from {start_position_seconds} seconds...")
 
     mpv_proc = subprocess.Popen([
         "mpv",
@@ -297,7 +331,7 @@ try:
                             f"{JELLYFIN_URL}/Sessions/Playing/Progress",
                             headers=headers,
                             json={
-                                "ItemId": episode_id,
+                                "ItemId": item_id,
                                 "PositionTicks": int(current_pos * 10_000_000),
                             },
                             timeout=2  # Short timeout to prevent hanging
@@ -323,9 +357,9 @@ try:
                 f"{JELLYFIN_URL}/Sessions/Playing/Stopped",
                 headers=headers,
                 json={
-                    "ItemId": episode_id,
+                    "ItemId": item_id,
                     "PositionTicks": int(final_pos * 10_000_000),
-                    "MediaSourceId": episode_id
+                    "MediaSourceId": item_id
                 }
             )
             print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
