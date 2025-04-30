@@ -16,6 +16,10 @@ For Arch-based Linux distributions, you can install JellyPlayer directly from th
 yay -S jellyplayer-git
 ```
 
+Once installed, you can run JellyPlayer using the following command:
+```bash
+jellyplayer
+```
 
 ### Option 2: Manual Installation
 
@@ -24,7 +28,6 @@ Ensure `mpv` is installed on your system:
 - **Linux**: Install via your package manager, e.g., `yay -S mpv`.
 - **macOS**: Install via Homebrew, e.g., `brew install mpv`.
 - **Windows**: Download the installer from [mpv.io](https://mpv.io/installation/).
-
 
 1. Clone the repository:
     ```bash
@@ -41,3 +44,7 @@ Ensure `mpv` is installed on your system:
     ```bash
     python jellyplayer.py
     ```
+
+    ### Configuration
+
+    The config is stored at `~/.config/jellyplayer/config.json`
