@@ -8,7 +8,8 @@ import socket
 import json
 import curses
 import signal
-from dotenv import load_dotenv
+from base64 import b64encode, b64decode
+from pathlib import Path
 
 # Initialize curses
 stdscr = curses.initscr()
@@ -24,11 +25,12 @@ if curses.has_colors():
     curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)    # Error messages
     curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)   # Menu headers
 
-load_dotenv()
+CONFIG_FILE = str(Path.home() / ".config/jellyplayer/config.json")
+CONFIG_DIR = Path(CONFIG_FILE).parent
 
-JELLYFIN_URL = os.getenv("JELLYFIN_URL")
-JELLYFIN_USERNAME = os.getenv("JELLYFIN_USERNAME")
-JELLYFIN_PASSWORD = os.getenv("JELLYFIN_PASSWORD")
+# Create the config directory if it doesn't exist
+if not CONFIG_DIR.exists():
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 def cleanup():
     """Clean up curses and exit"""
@@ -44,9 +46,127 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-if not all([JELLYFIN_URL, JELLYFIN_USERNAME, JELLYFIN_PASSWORD]):
+def xor_cipher(text, key):
+    """Simple XOR cipher for basic obfuscation"""
+    return ''.join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(text))
+
+def encrypt_password(password, key):
+    """Encrypt password with XOR and base64 encode"""
+    encrypted = xor_cipher(password, key)
+    return b64encode(encrypted.encode()).decode()
+
+def decrypt_password(encrypted_password, key):
+    """Decrypt password from base64 and XOR"""
+    decoded = b64decode(encrypted_password.encode()).decode()
+    return xor_cipher(decoded, key)
+
+def get_input(prompt, hidden=False):
+    """Get user input with curses"""
+    stdscr.clear()
+    h, w = stdscr.getmaxyx()
+    stdscr.addstr(h//2 - 1, (w - len(prompt))//2, prompt)
+    stdscr.refresh()
+    
+    if hidden:
+        curses.noecho()
+    else:
+        curses.echo()
+    
+    input_str = ""
+    while True:
+        c = stdscr.getch()
+        if c == curses.KEY_ENTER or c in [10, 13]:
+            break
+        elif c == curses.KEY_BACKSPACE or c == 127:
+            if len(input_str) > 0:
+                input_str = input_str[:-1]
+                stdscr.delch(h//2, (w - len(prompt))//2 + len(input_str))
+        else:
+            input_str += chr(c)
+            if hidden:
+                stdscr.addch(h//2, (w - len(prompt))//2 + len(input_str)-1, '*')
+            else:
+                stdscr.addch(h//2, (w - len(prompt))//2 + len(input_str)-1, c)
+    
+    curses.noecho()
+    return input_str
+
+def generate_key():
+    """Generate a random encryption key."""
+    return b64encode(os.urandom(16)).decode()
+
+def load_config():
+    """Load config from file or create a new one with a generated key."""
+    if not os.path.exists(CONFIG_FILE):
+        return None
+
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
+
+        # Decrypt password
+        key = config['ENCRYPTION_KEY']
+        config['JELLYFIN_PASSWORD'] = decrypt_password(config['JELLYFIN_PASSWORD'], key)
+        return config
+    except Exception as e:
+        stdscr.addstr(0, 0, f"Error loading config: {str(e)}", curses.color_pair(2))
+        stdscr.refresh()
+        time.sleep(2)
+        return None
+
+def save_config(config):
+    """Save config to file with encrypted password and generated key."""
+    try:
+        # Generate a key if it doesn't exist
+        if 'ENCRYPTION_KEY' not in config:
+            config['ENCRYPTION_KEY'] = generate_key()
+
+        # Encrypt password before saving
+        config_copy = config.copy()
+        config_copy['JELLYFIN_PASSWORD'] = encrypt_password(config['JELLYFIN_PASSWORD'], config['ENCRYPTION_KEY'])
+
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config_copy, f, indent=2)
+        return True
+    except Exception as e:
+        stdscr.addstr(0, 0, f"Error saving config: {str(e)}", curses.color_pair(2))
+        stdscr.refresh()
+        time.sleep(2)
+        return False
+
+def get_credentials():
+    """Get credentials from the saved config file or prompt user for new ones."""
+    config = load_config()
+
+    if config:
+        return config
+
+    # Get new credentials
+    stdscr.clear()
+    config = {
+        'JELLYFIN_URL': get_input("Enter Jellyfin server URL (e.g., http://localhost:8096): "),
+        'JELLYFIN_USERNAME': get_input("Enter Jellyfin username: "),
+        'JELLYFIN_PASSWORD': get_input("Enter Jellyfin password: ", hidden=True)
+    }
+
+    if save_config(config):
+        stdscr.addstr(0, 0, "Credentials saved successfully!", curses.color_pair(1))
+        stdscr.refresh()
+        time.sleep(1)
+
+    return config
+
+
+# Get credentials
+try:
+    config = get_credentials()
+    JELLYFIN_URL = config['JELLYFIN_URL']
+    JELLYFIN_USERNAME = config['JELLYFIN_USERNAME']
+    JELLYFIN_PASSWORD = config['JELLYFIN_PASSWORD']
+except Exception as e:
     cleanup()
-    raise ValueError("Make sure JELLYFIN_URL, JELLYFIN_USERNAME and JELLYFIN_PASSWORD are set in your .env file.")
+    raise ValueError(f"Failed to get credentials: {str(e)}")
+
 
 # === LOGIN ===
 try:
