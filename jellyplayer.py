@@ -401,7 +401,7 @@ def display_menu(items, title, selected_index=0, status_msg=""):
 
 def select_from_list(items, title, allow_escape_up=False):
     selected_index = 0
-    status_msg = "↑/↓: Navigate | Enter: Select | Q: Quit | ESC: Go Back"
+    status_msg = "↑/↓: Navigate | Enter: Select | Q: Quit"
     if allow_escape_up:
         status_msg += " | ESC: Go Back"
     display_menu(items, title, selected_index, status_msg)
