@@ -38,17 +38,12 @@ jobs:
         run: |
           sudo chown -R auruser:auruser aur
           sudo chmod -R u+rw aur
-
-      - name: Get commit hash from GitHub SHA
-        run: |
-          git config --global --add safe.directory /__w/jellyplayer/jellyplayer
-          commit_hash=$(git rev-parse --short "${{ github.sha }}")
-          echo "Commit hash: $commit_hash"
-          echo "commit_hash=$commit_hash" >> "$GITHUB_OUTPUT"
           
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-          sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
+          git config --global --add safe.directory /__w/jellyplayer/jellyplayer
+          commit_hash=$(git rev-parse --short "${{ github.sha }}")
+          sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=${{ commit_hash }}/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
 
       - name: Push to AUR
         run: |
