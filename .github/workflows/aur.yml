@@ -1,46 +1,49 @@
-name: Publish to AUR
+name: Auto-update AUR package
 
 on:
   push:
-    paths:
-      - 'aur/**'
+    branches:
+      - main
 
 jobs:
   aur:
-    name: Publish to AUR
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
 
     steps:
-      - name: Install base-devel and git
-        run: |
-          pacman -Sy --noconfirm base-devel git
+      - name: Install dependencies
+        run: pacman -Sy --noconfirm base-devel git
 
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
 
       - name: Set git identity
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@jellyplayer"
 
-      - name: Clone AUR repo
-        run: |
-          git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git aur-repo
+      - name: Get short commit hash
+        id: vars
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Copy and update PKGBUILD
+      - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-          cp -r aur/* aur-repo/
-          cd aur-repo
+          cd aur
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/" PKGBUILD
           makepkg --printsrcinfo > .SRCINFO
+
+      - name: Push to AUR
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+          git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git aur-repo
+          cp aur/* aur-repo/
+          cd aur-repo
+
           git add PKGBUILD .SRCINFO
-          git commit -m "Update to latest commit"
+          git commit -m "Update to commit ${{ steps.vars.outputs.commit_hash }}"
           git push
