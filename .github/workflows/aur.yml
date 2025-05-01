@@ -64,7 +64,7 @@ jobs:
           sudo -u auruser ssh-keyscan aur.archlinux.org >> /home/auruser/.ssh/known_hosts
 
           sudo -u auruser git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git /home/auruser/aur-repo
-          sudo -u auruser cp aur/* /home/auruser/aur-repo/
+          sudo -u auruser cp -r aur/. /home/auruser/aur-repo/
           cd /home/auruser/aur-repo
 
           sudo -u auruser git add -A
