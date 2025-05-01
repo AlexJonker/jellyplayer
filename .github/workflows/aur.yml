@@ -43,7 +43,7 @@ jobs:
         run: |
           git config --global --add safe.directory /__w/jellyplayer/jellyplayer
           commit_hash=$(git rev-parse --short "${{ github.sha }}")
-          sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=${{ $commit_hash }}/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
+          sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
 
       - name: Push to AUR
         run: |
