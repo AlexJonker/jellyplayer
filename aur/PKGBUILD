@@ -10,10 +10,6 @@ makedepends=('git' 'pyinstaller')
 source=("git+$url.git")
 md5sums=('SKIP')
 
-# pkgver() {
-#   cd "$srcdir/jellyplayer"
-#   git rev-parse --short HEAD
-# }
 
 package() {
   cd "$srcdir/jellyplayer"
