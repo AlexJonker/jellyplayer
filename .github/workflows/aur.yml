@@ -50,9 +50,7 @@ jobs:
             sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD
             makepkg --printsrcinfo > .SRCINFO"
             echo '-----------------------------------------------------------'
-            cat PKGBUILD
-            echo '-----------------------------------------------------------'
-            cat .SRCINFO
+            ls -a
             echo '-----------------------------------------------------------'
             "
 
