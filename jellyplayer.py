@@ -469,7 +469,7 @@ if media_type == "Series":
             print("No seasons found.")
             exit()
 
-        selected_season = select_from_list(seasons, "Seasons")
+        selected_season = select_from_list(seasons, f"{shows[selected_show]['Name']}")
         season_id = seasons[selected_season]["Id"]
 
         # === GET EPISODES ===
@@ -486,7 +486,7 @@ if media_type == "Series":
             print("No episodes found.")
             exit()
 
-        selected_episode = select_from_list(episodes, "Episodes")
+        selected_episode = select_from_list(episodes, f"{seasons[selected_season]['Name']}")
         item_id = episodes[selected_episode]["Id"]
         item_name = episodes[selected_episode]["Name"]
 
