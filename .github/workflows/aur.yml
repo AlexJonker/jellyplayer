@@ -39,9 +39,17 @@ jobs:
           sudo chown -R auruser:auruser aur
           sudo chmod -R u+rw aur
 
+      - name: Get commit hash from GitHub SHA
+        run: |
+          commit_hash=$(git rev-parse --short "${{ github.sha }}")
+          echo "Commit hash: $commit_hash"
+          echo "commit_hash=$commit_hash" >> "$GITHUB_OUTPUT"
+          
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-              sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=$(git rev-parse --short ${{ github.sha }})/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"   - name: Push to AUR
+          sudo -u auruser bash -c "cd aur && sed -i 's/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
+
+      - name: Push to AUR
         run: |
           sudo -u auruser mkdir -p /home/auruser/.ssh
           echo "${{ secrets.AUR_SSH_KEY }}" | sudo -u auruser tee /home/auruser/.ssh/id_ed25519 > /dev/null
