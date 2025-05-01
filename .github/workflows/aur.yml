@@ -68,5 +68,6 @@ jobs:
           cd /home/auruser/aur-repo
 
           sudo -u auruser git add -A
-          sudo -u auruser git commit -m "Update to commit ${{ steps.vars.outputs.commit_hash }}"
+          commit_hash=$(git rev-parse --short "${{ github.sha }}")
+          sudo -u auruser git commit -m "Update to commit $commit_hash"
           sudo -u auruser git push
