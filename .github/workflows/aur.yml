@@ -34,6 +34,11 @@ jobs:
         id: vars
         run: echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Update permissions for auruser
+        run: |
+          sudo chown -R auruser:auruser aur
+          sudo chmod -R u+rw aur
+
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
           sudo -u auruser bash -c "cd aur && sed -i \"s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/\" PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
