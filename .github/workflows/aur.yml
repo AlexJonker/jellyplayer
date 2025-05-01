@@ -48,11 +48,13 @@ jobs:
             git config --global user.email 'github-actions@jellyplayer'
             cd aur
             sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD
-            makepkg --printsrcinfo > .SRCINFO"
-            echo '-----------------------------------------------------------'
-            ls -a
-            echo '-----------------------------------------------------------'
-            "
+            makepkg --printsrcinfo > .SRCINFO
+          "
+          echo '-----------------------------------------------------------'
+          ls -a
+          echo '-----------------------------------------------------------'
+          ls -a aur
+          echo '-----------------------------------------------------------'
 
       - name: Push to AUR
         run: |
