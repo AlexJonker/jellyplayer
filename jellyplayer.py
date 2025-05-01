@@ -22,8 +22,11 @@ curses.curs_set(0)  # Hide cursor
 if curses.has_colors():
     curses.start_color()
     curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Watched items
-    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)    # Error messages
-    curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)   # Menu headers
+    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)  # Error messages
+    curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)  # Menu headers
+    curses.init_pair(
+        4, curses.COLOR_YELLOW, curses.COLOR_BLACK
+    )  # Partially watched items
 
 CONFIG_FILE = str(Path.home() / ".config/jellyplayer/config.json")
 CONFIG_DIR = Path(CONFIG_FILE).parent
@@ -32,6 +35,7 @@ CONFIG_DIR = Path(CONFIG_FILE).parent
 if not CONFIG_DIR.exists():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def cleanup():
     """Clean up curses and exit"""
     curses.nocbreak()
@@ -39,39 +43,45 @@ def cleanup():
     curses.echo()
     curses.endwin()
 
+
 def signal_handler(sig, frame):
     """Handle Ctrl+C interrupt"""
     cleanup()
     os._exit(0)
 
+
 signal.signal(signal.SIGINT, signal_handler)
+
 
 def xor_cipher(text, key):
     """Simple XOR cipher for basic obfuscation"""
-    return ''.join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(text))
+    return "".join(chr(ord(c) ^ ord(key[i % len(key)])) for i, c in enumerate(text))
+
 
 def encrypt_password(password, key):
     """Encrypt password with XOR and base64 encode"""
     encrypted = xor_cipher(password, key)
     return b64encode(encrypted.encode()).decode()
 
+
 def decrypt_password(encrypted_password, key):
     """Decrypt password from base64 and XOR"""
     decoded = b64decode(encrypted_password.encode()).decode()
     return xor_cipher(decoded, key)
 
+
 def get_input(prompt, hidden=False):
     """Get user input with curses"""
     stdscr.clear()
     h, w = stdscr.getmaxyx()
-    stdscr.addstr(h//2 - 1, (w - len(prompt))//2, prompt)
+    stdscr.addstr(h // 2 - 1, (w - len(prompt)) // 2, prompt)
     stdscr.refresh()
-    
+
     if hidden:
         curses.noecho()
     else:
         curses.echo()
-    
+
     input_str = ""
     while True:
         c = stdscr.getch()
@@ -80,20 +90,22 @@ def get_input(prompt, hidden=False):
         elif c == curses.KEY_BACKSPACE or c == 127:
             if len(input_str) > 0:
                 input_str = input_str[:-1]
-                stdscr.delch(h//2, (w - len(prompt))//2 + len(input_str))
+                stdscr.delch(h // 2, (w - len(prompt)) // 2 + len(input_str))
         else:
             input_str += chr(c)
             if hidden:
-                stdscr.addch(h//2, (w - len(prompt))//2 + len(input_str)-1, '*')
+                stdscr.addch(h // 2, (w - len(prompt)) // 2 + len(input_str) - 1, "*")
             else:
-                stdscr.addch(h//2, (w - len(prompt))//2 + len(input_str)-1, c)
-    
+                stdscr.addch(h // 2, (w - len(prompt)) // 2 + len(input_str) - 1, c)
+
     curses.noecho()
     return input_str
+
 
 def generate_key():
     """Generate a random encryption key."""
     return b64encode(os.urandom(16)).decode()
+
 
 def load_config():
     """Load config from file or create a new one with a generated key."""
@@ -101,12 +113,12 @@ def load_config():
         return None
 
     try:
-        with open(CONFIG_FILE, 'r') as f:
+        with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
 
         # Decrypt password
-        key = config['ENCRYPTION_KEY']
-        config['JELLYFIN_PASSWORD'] = decrypt_password(config['JELLYFIN_PASSWORD'], key)
+        key = config["ENCRYPTION_KEY"]
+        config["JELLYFIN_PASSWORD"] = decrypt_password(config["JELLYFIN_PASSWORD"], key)
         return config
     except Exception as e:
         stdscr.addstr(0, 0, f"Error loading config: {str(e)}", curses.color_pair(2))
@@ -114,18 +126,21 @@ def load_config():
         time.sleep(2)
         return None
 
+
 def save_config(config):
     """Save config to file with encrypted password and generated key."""
     try:
         # Generate a key if it doesn't exist
-        if 'ENCRYPTION_KEY' not in config:
-            config['ENCRYPTION_KEY'] = generate_key()
+        if "ENCRYPTION_KEY" not in config:
+            config["ENCRYPTION_KEY"] = generate_key()
 
         # Encrypt password before saving
         config_copy = config.copy()
-        config_copy['JELLYFIN_PASSWORD'] = encrypt_password(config['JELLYFIN_PASSWORD'], config['ENCRYPTION_KEY'])
+        config_copy["JELLYFIN_PASSWORD"] = encrypt_password(
+            config["JELLYFIN_PASSWORD"], config["ENCRYPTION_KEY"]
+        )
 
-        with open(CONFIG_FILE, 'w') as f:
+        with open(CONFIG_FILE, "w") as f:
             json.dump(config_copy, f, indent=2)
         return True
     except Exception as e:
@@ -133,6 +148,7 @@ def save_config(config):
         stdscr.refresh()
         time.sleep(2)
         return False
+
 
 def get_credentials():
     """Get credentials from the saved config file or prompt user for new ones."""
@@ -144,9 +160,11 @@ def get_credentials():
     # Get new credentials
     stdscr.clear()
     config = {
-        'JELLYFIN_URL': get_input("Enter Jellyfin server URL (e.g., http://localhost:8096): "),
-        'JELLYFIN_USERNAME': get_input("Enter Jellyfin username: "),
-        'JELLYFIN_PASSWORD': get_input("Enter Jellyfin password: ", hidden=True)
+        "JELLYFIN_URL": get_input(
+            "Enter Jellyfin server URL (e.g., http://localhost:8096): "
+        ),
+        "JELLYFIN_USERNAME": get_input("Enter Jellyfin username: "),
+        "JELLYFIN_PASSWORD": get_input("Enter Jellyfin password: ", hidden=True),
     }
 
     if save_config(config):
@@ -160,9 +178,9 @@ def get_credentials():
 # Get credentials
 try:
     config = get_credentials()
-    JELLYFIN_URL = config['JELLYFIN_URL']
-    JELLYFIN_USERNAME = config['JELLYFIN_USERNAME']
-    JELLYFIN_PASSWORD = config['JELLYFIN_PASSWORD']
+    JELLYFIN_URL = config["JELLYFIN_URL"]
+    JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
+    JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
 except Exception as e:
     cleanup()
     raise ValueError(f"Failed to get credentials: {str(e)}")
@@ -181,7 +199,7 @@ try:
     auth_res = requests.post(
         f"{JELLYFIN_URL}/Users/AuthenticateByName",
         headers=headers,
-        json={"Username": JELLYFIN_USERNAME, "Pw": JELLYFIN_PASSWORD}
+        json={"Username": JELLYFIN_USERNAME, "Pw": JELLYFIN_PASSWORD},
     )
 
     if auth_res.status_code != 200:
@@ -196,6 +214,72 @@ except Exception as e:
     cleanup()
     raise
 
+# Add after headers are defined
+show_watch_cache = {}
+season_watch_cache = {}
+
+
+def cache_show_watch_status(show_id):
+    """Cache all watch status for a show and its seasons"""
+    if show_id in show_watch_cache:
+        return
+
+    episodes = (
+        requests.get(f"{JELLYFIN_URL}/Shows/{show_id}/Episodes", headers=headers)
+        .json()
+        .get("Items", [])
+    )
+
+    show_has_watched = True  # Assume fully watched until proven otherwise
+    show_has_partial = False
+    season_status = {}
+
+    for ep in episodes:
+        season_id = ep.get("SeasonId")
+        if season_id not in season_status:
+            season_status[season_id] = {
+                "watched": True,
+                "partial": False,
+            }  # Assume fully watched
+
+        user_data = ep.get("UserData", {})
+        if user_data.get("Played", False):
+            # Episode is fully watched, no change needed
+            continue
+        elif user_data.get("PlaybackPositionTicks", 0) > 0:
+            # Episode is partially watched
+            show_has_partial = True
+            season_status[season_id]["partial"] = True
+            season_status[season_id]["watched"] = False  # Season is not fully watched
+            show_has_watched = False  # Show is not fully watched
+        else:
+            # Episode is not watched at all
+            season_status[season_id]["watched"] = False  # Season is not fully watched
+            show_has_watched = False  # Show is not fully watched
+
+    show_watch_cache[show_id] = {
+        "watched": show_has_watched,
+        "partial": show_has_partial,
+        "seasons": season_status,
+    }
+
+
+def get_cached_show_status(show_id):
+    """Get cached watch status for a show"""
+    if show_id not in show_watch_cache:
+        cache_show_watch_status(show_id)
+    return show_watch_cache[show_id]
+
+
+def get_cached_season_status(show_id, season_id):
+    """Get cached watch status for a season"""
+    if show_id not in show_watch_cache:
+        cache_show_watch_status(show_id)
+    return show_watch_cache[show_id]["seasons"].get(
+        season_id, {"watched": False, "partial": False}
+    )
+
+
 def display_menu(items, title, selected_index=0, status_msg=""):
     stdscr.clear()
     h, w = stdscr.getmaxyx()
@@ -205,38 +289,88 @@ def display_menu(items, title, selected_index=0, status_msg=""):
     start_index = max(0, selected_index - max_visible_items + 1)
     end_index = min(len(items), start_index + max_visible_items)
 
-    # Draw title with color
+    # Draw title
     if curses.has_colors():
-        stdscr.addstr(0, (w - len(title)) // 2, title, curses.color_pair(3) | curses.A_BOLD)
+        stdscr.addstr(
+            0, (w - len(title)) // 2, title, curses.color_pair(3) | curses.A_BOLD
+        )
     else:
         stdscr.addstr(0, (w - len(title)) // 2, title, curses.A_BOLD)
 
-    # Draw items
+    # First pass: draw all items without status (fast)
     for idx, item in enumerate(items[start_index:end_index]):
         actual_idx = start_index + idx
-        is_watched = item.get("UserData", {}).get("Played", False)
-        item_text = f"> {item['Name']}" if actual_idx == selected_index else f"  {item['Name']}"
+        item_text = (
+            f"> {item['Name']}" if actual_idx == selected_index else f"  {item['Name']}"
+        )
+        stdscr.addstr(
+            idx + 2,
+            2,
+            item_text,
+            curses.A_REVERSE if actual_idx == selected_index else 0,
+        )
 
-        # Apply color and highlighting
-        if actual_idx == selected_index:
-            if is_watched and curses.has_colors():
-                stdscr.addstr(idx + 2, 2, item_text, curses.A_REVERSE | curses.color_pair(1))
+    stdscr.refresh()  # Show initial draw quickly
+
+    # Second pass: add status indicators (slower but now visible)
+    for idx, item in enumerate(items[start_index:end_index]):
+        actual_idx = start_index + idx
+        user_data = item.get("UserData", {})
+        is_watched = user_data.get("Played", False)
+        is_partial = not is_watched and user_data.get("PlaybackPositionTicks", 0) > 0
+
+        # Get status from cache if needed
+        if "Id" in item and not (is_watched or is_partial):
+            if item.get("Type") == "Series":
+                status = get_cached_show_status(item["Id"])
+                has_watched = status["watched"]
+                has_partial = status["partial"]
+            elif item.get("Type") == "Season":
+                status = get_cached_season_status(item.get("SeriesId", ""), item["Id"])
+                has_watched = status["watched"]
+                has_partial = status["partial"]
             else:
-                stdscr.addstr(idx + 2, 2, item_text, curses.A_REVERSE)
+                has_watched = False
+                has_partial = False
         else:
-            if is_watched and curses.has_colors():
-                stdscr.addstr(idx + 2, 2, item_text, curses.color_pair(1))
-            else:
-                stdscr.addstr(idx + 2, 2, item_text)
+            has_watched = False
+            has_partial = False
 
-        # Add watched checkmark
+        # Determine final status
         if is_watched:
-            if curses.has_colors():
-                stdscr.addstr(idx + 2, w - 2, "✔", curses.color_pair(1))
-            else:
-                stdscr.addstr(idx + 2, w - 2, "✔")
+            color = 1
+            indicator = "✔"
+        elif is_partial:
+            color = 4
+            indicator = "~"
+        elif has_watched:
+            color = 1
+            indicator = "✔"
+        elif has_partial:
+            color = 4
+            indicator = "~"
+        else:
+            color = 0
+            indicator = " "
 
-    # Status message at bottom
+        # Apply color if needed
+        if color > 0 and curses.has_colors():
+            item_text = (
+                f"> {item['Name']}"
+                if actual_idx == selected_index
+                else f"  {item['Name']}"
+            )
+            attr = curses.A_REVERSE if actual_idx == selected_index else 0
+            stdscr.addstr(idx + 2, 2, item_text, attr | curses.color_pair(color))
+
+        # Add indicator if needed
+        if indicator != " ":
+            if curses.has_colors():
+                stdscr.addstr(idx + 2, w - 2, indicator, curses.color_pair(color))
+            else:
+                stdscr.addstr(idx + 2, w - 2, indicator)
+
+    # Status message
     if status_msg:
         if curses.has_colors() and "Error" in status_msg:
             stdscr.addstr(h - 1, 0, status_msg, curses.color_pair(2))
@@ -250,7 +384,7 @@ def select_from_list(items, title):
     selected_index = 0
     status_msg = "↑/↓: Navigate | Enter: Select | ESC: Exit"
     display_menu(items, title, selected_index, status_msg)
-    
+
     while True:
         try:
             key = stdscr.getch()
@@ -267,16 +401,18 @@ def select_from_list(items, title):
                 os._exit(0)
         except Exception as e:
             display_menu(items, title, selected_index, f"Error: {str(e)}")
-    
+
     return selected_index
+
 
 def select_media_type():
     options = [
         {"Name": "TV Shows", "Type": "Series"},
-        {"Name": "Movies", "Type": "Movie"}
+        {"Name": "Movies", "Type": "Movie"},
     ]
     selected = select_from_list(options, "Select Media Type")
     return options[selected]["Type"]
+
 
 # === MAIN MENU ===
 media_type = select_media_type()
@@ -289,7 +425,7 @@ if media_type == "Series":
 
         shows = requests.get(
             f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Series&Recursive=true",
-            headers=headers
+            headers=headers,
         ).json()["Items"]
 
         if not shows:
@@ -305,8 +441,7 @@ if media_type == "Series":
         stdscr.refresh()
 
         seasons = requests.get(
-            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons",
-            headers=headers
+            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
         ).json()["Items"]
 
         if not seasons:
@@ -323,7 +458,7 @@ if media_type == "Series":
 
         episodes = requests.get(
             f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
-            headers=headers
+            headers=headers,
         ).json()["Items"]
 
         if not episodes:
@@ -347,7 +482,7 @@ elif media_type == "Movie":
 
         movies = requests.get(
             f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Movie&Recursive=true",
-            headers=headers
+            headers=headers,
         ).json()["Items"]
 
         if not movies:
@@ -380,31 +515,38 @@ try:
             "IsPaused": True,
             "IsMuted": False,
             "PlaybackStartTimeTicks": 0,
-            "PlayMethod": "DirectStream"
-        }
+            "PlayMethod": "DirectStream",
+        },
     )
 
     # === MPV IPC ===
     ipc_path = tempfile.NamedTemporaryFile(delete=False).name
     playback_info = requests.get(
-        f"{JELLYFIN_URL}/Users/{user_id}/Items/{item_id}",
-        headers=headers
+        f"{JELLYFIN_URL}/Users/{user_id}/Items/{item_id}", headers=headers
     ).json()
 
-    start_position_ticks = playback_info.get("UserData", {}).get("PlaybackPositionTicks", 0)
-    start_position_seconds = start_position_ticks // 10_000_000  # Convert ticks to seconds
+    start_position_ticks = playback_info.get("UserData", {}).get(
+        "PlaybackPositionTicks", 0
+    )
+    start_position_seconds = (
+        start_position_ticks // 10_000_000
+    )  # Convert ticks to seconds
 
-    print(f"Starting playback of '{item_name}' from {start_position_seconds} seconds...")
+    print(
+        f"Starting playback of '{item_name}' from {start_position_seconds} seconds..."
+    )
 
-    mpv_proc = subprocess.Popen([
-        "mpv",
-        stream_url,
-        f"--input-ipc-server={ipc_path}",
-        "--slang=en",
-        "--alang=ja",
-        f"--start={start_position_seconds}",
-        "--fs"
-    ])
+    mpv_proc = subprocess.Popen(
+        [
+            "mpv",
+            stream_url,
+            f"--input-ipc-server={ipc_path}",
+            "--slang=en",
+            "--alang=ja",
+            f"--start={start_position_seconds}",
+            "--fs",
+        ]
+    )
 
     import errno
 
@@ -461,9 +603,11 @@ try:
                                 "ItemId": item_id,
                                 "PositionTicks": int(current_pos * 10_000_000),
                             },
-                            timeout=2  # Short timeout to prevent hanging
+                            timeout=2,  # Short timeout to prevent hanging
                         )
-                        print(f"↻ Current progress: {current_pos:.1f} seconds", end='\r')
+                        print(
+                            f"↻ Current progress: {current_pos:.1f} seconds", end="\r"
+                        )
                     except requests.exceptions.RequestException as e:
                         print(f"⚠ Progress report failed: {e}")
                 time.sleep(2)  # Report progress every 2 seconds
@@ -486,8 +630,8 @@ try:
                 json={
                     "ItemId": item_id,
                     "PositionTicks": int(final_pos * 10_000_000),
-                    "MediaSourceId": item_id
-                }
+                    "MediaSourceId": item_id,
+                },
             )
             print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
     except Exception as e:
