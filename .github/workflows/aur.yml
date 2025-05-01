@@ -46,7 +46,8 @@ jobs:
           sudo -u auruser bash -c "
             git config --global user.name 'GitHub Actions'
             git config --global user.email 'github-actions@jellyplayer'
-            cd aur && sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
+            cd aur && sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD
+            makepkg --printsrcinfo > .SRCINFO"
 
       - name: Push to AUR
         run: |
