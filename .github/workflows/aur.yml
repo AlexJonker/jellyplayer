@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: pacman -Sy --noconfirm base-devel git sudo
+        run: pacman -Sy --noconfirm base-devel git sudo openssh
 
       - name: Create non-root user and setup
         run: |
