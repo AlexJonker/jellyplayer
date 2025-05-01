@@ -3,7 +3,7 @@ name: Auto-update AUR package
 on:
   push:
     branches:
-      - main
+      - main  # or your default branch
 
 jobs:
   aur:
@@ -13,7 +13,14 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: pacman -Sy --noconfirm base-devel git
+        run: pacman -Sy --noconfirm base-devel git sudo
+
+      - name: Create non-root user and setup
+        run: |
+          useradd -m auruser
+          echo 'auruser ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/auruser
+          sudo -u auruser mkdir -p /home/auruser/.ssh
+          sudo -u auruser mkdir -p /home/auruser/aur-repo
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -29,21 +36,21 @@ jobs:
 
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-          cd aur
-          sed -i "s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/" PKGBUILD
-          makepkg --printsrcinfo > .SRCINFO
+          sudo -u auruser cd aur
+          sudo -u auruser sed -i "s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/" PKGBUILD
+          sudo -u auruser makepkg --printsrcinfo > .SRCINFO
 
       - name: Push to AUR
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          sudo -u auruser mkdir -p /home/auruser/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" | sudo -u auruser tee /home/auruser/.ssh/id_ed25519 > /dev/null
+          sudo -u auruser chmod 600 /home/auruser/.ssh/id_ed25519
+          sudo -u auruser ssh-keyscan aur.archlinux.org >> /home/auruser/.ssh/known_hosts
 
-          git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git aur-repo
-          cp aur/* aur-repo/
-          cd aur-repo
+          sudo -u auruser git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git /home/auruser/aur-repo
+          sudo -u auruser cp aur/* /home/auruser/aur-repo/
+          cd /home/auruser/aur-repo
 
-          git add PKGBUILD .SRCINFO
-          git commit -m "Update to commit ${{ steps.vars.outputs.commit_hash }}"
-          git push
+          sudo -u auruser git add PKGBUILD .SRCINFO
+          sudo -u auruser git commit -m "Update to commit ${{ steps.vars.outputs.commit_hash }}"
+          sudo -u auruser git push
