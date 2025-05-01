@@ -36,9 +36,7 @@ jobs:
 
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-          sudo -u auruser cd aur
-          sudo -u auruser sed -i "s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/" PKGBUILD
-          sudo -u auruser makepkg --printsrcinfo > .SRCINFO
+          sudo -u auruser bash -c "cd aur && sed -i \"s/^pkgver=.*/pkgver=${{ steps.vars.outputs.commit_hash }}/\" PKGBUILD && makepkg --printsrcinfo > .SRCINFO"
 
       - name: Push to AUR
         run: |
