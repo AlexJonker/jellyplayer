@@ -9,8 +9,13 @@ jobs:
   aur:
     name: Publish to AUR
     runs-on: ubuntu-latest
+    container: archlinux:latest
 
     steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm git base-devel openssh
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -30,7 +35,7 @@ jobs:
         run: |
           git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git aur-repo
 
-      - name: Copy and update PKGBUILD
+      - name: Copy PKGBUILD and update SRCINFO
         run: |
           cp -r aur/* aur-repo/
           cd aur-repo
