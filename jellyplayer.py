@@ -283,7 +283,6 @@ def cache_show_watch_status(show_id):
     }
 
 
-
 def get_cached_show_status(show_id):
     """Get cached watch status for a show"""
     if show_id not in show_watch_cache:
@@ -400,9 +399,11 @@ def display_menu(items, title, selected_index=0, status_msg=""):
     stdscr.refresh()
 
 
-def select_from_list(items, title):
+def select_from_list(items, title, allow_escape_up=False):
     selected_index = 0
-    status_msg = "↑/↓: Navigate | Enter: Select | ESC: Exit"
+    status_msg = "↑/↓: Navigate | Enter: Select | Q: Quit | ESC: Go Back"
+    if allow_escape_up:
+        status_msg += " | ESC: Go Back"
     display_menu(items, title, selected_index, status_msg)
 
     while True:
@@ -416,7 +417,9 @@ def select_from_list(items, title):
                 display_menu(items, title, selected_index, status_msg)
             elif key == curses.KEY_ENTER or key in [10, 13]:  # Enter key
                 return selected_index
-            elif key == 27:  # ESC key
+            elif key == 27 and allow_escape_up:  # ESC key - only allowed when going back is possible
+                return -1  # Special value to indicate going back
+            elif key in [ord('q'), ord('Q')]:  # Q key
                 cleanup()
                 os._exit(0)
         except Exception as e:
@@ -430,7 +433,7 @@ def select_media_type():
         {"Name": "TV Shows", "Type": "Series"},
         {"Name": "Movies", "Type": "Movie"},
     ]
-    selected = select_from_list(options, "Select Media Type")
+    selected = select_from_list(options, "Select Media Type", allow_escape_up=False)
     return options[selected]["Type"]
 
 
@@ -453,42 +456,55 @@ if media_type == "Series":
             print("No shows found.")
             exit()
 
-        selected_show = select_from_list(shows, "TV Shows")
-        show_id = shows[selected_show]["Id"]
+        while True:
+            selected_show = select_from_list(shows, "TV Shows", allow_escape_up=False)
+            show_id = shows[selected_show]["Id"]
+            show_name = shows[selected_show]["Name"]
 
-        # === GET SEASONS ===
-        stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
-        stdscr.refresh()
+            # === GET SEASONS ===
+            stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
+            stdscr.refresh()
 
-        seasons = requests.get(
-            f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
-        ).json()["Items"]
+            seasons = requests.get(
+                f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
+            ).json()["Items"]
 
-        if not seasons:
-            cleanup()
-            print("No seasons found.")
-            exit()
+            if not seasons:
+                cleanup()
+                print("No seasons found.")
+                exit()
 
-        selected_season = select_from_list(seasons, f"{shows[selected_show]['Name']}")
-        season_id = seasons[selected_season]["Id"]
+            while True:
+                selected_season = select_from_list(seasons, f"{show_name}", allow_escape_up=True)
+                if selected_season == -1:
+                    break  # Go back to shows list
+                season_id = seasons[selected_season]["Id"]
+                season_name = seasons[selected_season]["Name"]
 
-        # === GET EPISODES ===
-        stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
-        stdscr.refresh()
+                # === GET EPISODES ===
+                stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
+                stdscr.refresh()
 
-        episodes = requests.get(
-            f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
-            headers=headers,
-        ).json()["Items"]
+                episodes = requests.get(
+                    f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
+                    headers=headers,
+                ).json()["Items"]
 
-        if not episodes:
-            cleanup()
-            print("No episodes found.")
-            exit()
+                if not episodes:
+                    cleanup()
+                    print("No episodes found.")
+                    exit()
 
-        selected_episode = select_from_list(episodes, f"{seasons[selected_season]['Name']}")
-        item_id = episodes[selected_episode]["Id"]
-        item_name = episodes[selected_episode]["Name"]
+                selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
+                if selected_episode == -1:
+                    continue  # Go back to seasons list
+                
+                item_id = episodes[selected_episode]["Id"]
+                item_name = episodes[selected_episode]["Name"]
+                break  # Exit season loop to start playback
+
+            if selected_episode != -1:
+                break  # Exit show loop to start playback
 
     except Exception as e:
         cleanup()
@@ -510,7 +526,7 @@ elif media_type == "Movie":
             print("No movies found.")
             exit()
 
-        selected_movie = select_from_list(movies, "Movies")
+        selected_movie = select_from_list(movies, "Movies", allow_escape_up=False)
         item_id = movies[selected_movie]["Id"]
         item_name = movies[selected_movie]["Name"]
 
