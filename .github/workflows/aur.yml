@@ -1,0 +1,40 @@
+name: Publish to AUR
+
+on:
+  push:
+    paths:
+      - 'aur/**'
+
+jobs:
+  aur:
+    name: Publish to AUR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+      - name: Set git identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@jellyplayer"
+
+      - name: Clone AUR repo
+        run: |
+          git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git aur-repo
+
+      - name: Copy and update PKGBUILD
+        run: |
+          cp -r aur/* aur-repo/
+          cd aur-repo
+          makepkg --printsrcinfo > .SRCINFO
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update to latest commit"
+          git push
