@@ -67,6 +67,6 @@ jobs:
           sudo -u auruser cp aur/* /home/auruser/aur-repo/
           cd /home/auruser/aur-repo
 
-          sudo -u auruser git add PKGBUILD .SRCINFO
+          sudo -u auruser git add -A
           sudo -u auruser git commit -m "Update to commit ${{ steps.vars.outputs.commit_hash }}"
           sudo -u auruser git push
