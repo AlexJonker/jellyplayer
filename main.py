@@ -494,6 +494,10 @@ if media_type == "Series":
                     cleanup()
                     print("No episodes found.")
                     exit()
+                
+                for idx, episode in enumerate(episodes, 1):
+                    episode["Name"] = f"{idx}. {episode['Name']}"
+
 
                 selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
                 if selected_episode == -1:
