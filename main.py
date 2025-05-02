@@ -438,252 +438,283 @@ def select_media_type():
 
 
 # === MAIN MENU ===
-media_type = select_media_type()
 
-if media_type == "Series":
-    # === GET TV SHOWS ===
+def play_item(item_id, item_name):
+    """Handle playback of an item and return to the appropriate menu"""
+    cleanup()  # Clean up curses before playback
+
     try:
-        stdscr.addstr(0, 0, "Loading TV shows...", curses.A_BOLD)
-        stdscr.refresh()
+        stream_url = f"{JELLYFIN_URL}/Items/{item_id}/Download?api_key={token}"
 
-        shows = requests.get(
-            f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Series&Recursive=true",
+        # === START PLAYBACK SESSION ===
+        requests.post(
+            f"{JELLYFIN_URL}/Sessions/Playing",
             headers=headers,
-        ).json()["Items"]
+            json={
+                "ItemId": item_id,
+                "CanSeek": True,
+                "IsPaused": True,
+                "IsMuted": False,
+                "PlaybackStartTimeTicks": 0,
+                "PlayMethod": "DirectStream",
+            },
+        )
 
-        if not shows:
-            cleanup()
-            print("No shows found.")
-            exit()
+        # === MPV IPC ===
+        ipc_path = tempfile.NamedTemporaryFile(delete=False).name
+        playback_info = requests.get(
+            f"{JELLYFIN_URL}/Users/{user_id}/Items/{item_id}", headers=headers
+        ).json()
 
+        start_position_ticks = playback_info.get("UserData", {}).get(
+            "PlaybackPositionTicks", 0
+        )
+        start_position_seconds = (
+            start_position_ticks // 10_000_000
+        )  # Convert ticks to seconds
+
+        print(
+            f"Starting playback of '{item_name}' from {start_position_seconds} seconds..."
+        )
+
+        mpv_proc = subprocess.Popen(
+            [
+                "mpv",
+                stream_url,
+                f"--input-ipc-server={ipc_path}",
+                "--slang=en",
+                "--alang=ja",
+                f"--start={start_position_seconds}",
+                "--fs",
+            ]
+        )
+
+        import errno
+
+        sock = socket.socket(socket.AF_UNIX)
+
+        timeout = time.time() + 5  # wait max 5 seconds
         while True:
-            selected_show = select_from_list(shows, "TV Shows", allow_escape_up=False)
-            show_id = shows[selected_show]["Id"]
-            show_name = shows[selected_show]["Name"]
+            try:
+                if os.path.exists(ipc_path):
+                    sock.connect(ipc_path)
+                    break
+            except socket.error as e:
+                if e.errno != errno.ECONNREFUSED:
+                    raise
+            if time.time() > timeout:
+                raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
+            time.sleep(0.1)
 
-            # === GET SEASONS ===
-            stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
+        def send_ipc_command(command):
+            try:
+                msg = json.dumps({"command": command})
+                sock.sendall((msg + "\n").encode())
+                response = b""
+                while not response.endswith(b"\n"):
+                    response += sock.recv(4096)
+                return json.loads(response.decode())
+            except Exception as e:
+                print(f"IPC command failed: {e}")
+                return None
+
+        def get_position():
+            result = send_ipc_command(["get_property", "playback-time"])
+            if result and "data" in result and isinstance(result["data"], (int, float)):
+                return result["data"]
+            return None
+
+        def get_playback_status():
+            result = send_ipc_command(["get_property", "pause"])
+            if result and "data" in result and isinstance(result["data"], bool):
+                return not result["data"]  # Return True if playing, False if paused
+            return None
+
+        # === SIMPLE PROGRESS REPORTING ===
+        def report_progress():
+            while mpv_proc.poll() is None:  # While MPV is running
+                try:
+                    current_pos = get_position()
+                    if current_pos is not None:
+                        try:
+                            requests.post(
+                                f"{JELLYFIN_URL}/Sessions/Playing/Progress",
+                                headers=headers,
+                                json={
+                                    "ItemId": item_id,
+                                    "PositionTicks": int(current_pos * 10_000_000),
+                                },
+                                timeout=2,  # Short timeout to prevent hanging
+                            )
+                            print(
+                                f"↻ Current progress: {current_pos:.1f} seconds", end="\r"
+                            )
+                        except requests.exceptions.RequestException as e:
+                            print(f"⚠ Progress report failed: {e}")
+                    time.sleep(2)  # Report progress every 2 seconds
+                except Exception as e:
+                    print(f"⚠ Unexpected error in progress reporting: {e}")
+                    time.sleep(2)
+
+        progress_thread = threading.Thread(target=report_progress, daemon=True)
+        progress_thread.start()
+
+        mpv_proc.wait()
+
+        # === STOP SESSION ===
+        try:
+            final_pos = get_position()
+            if final_pos is not None:
+                requests.post(
+                    f"{JELLYFIN_URL}/Sessions/Playing/Stopped",
+                    headers=headers,
+                    json={
+                        "ItemId": item_id,
+                        "PositionTicks": int(final_pos * 10_000_000),
+                        "MediaSourceId": item_id,
+                    },
+                )
+                print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
+        except Exception as e:
+            print(f"\n⚠ Failed to send stop notification: {e}")
+
+        sock.close()
+        try:
+            os.unlink(ipc_path)
+        except:
+            pass
+
+    except Exception as e:
+        print(f"\n⚠ Error during playback: {e}")
+        cleanup()
+        raise
+
+    stdscr = curses.initscr()
+    curses.noecho()
+    curses.cbreak()
+    stdscr.keypad(True)
+    curses.curs_set(0)
+    
+    if curses.has_colors():
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(3, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    
+    return stdscr  # Return the new stdscr object
+
+
+# === MAIN MENU LOOP ===
+while True:
+    media_type = select_media_type()
+
+    if media_type == "Series":
+        # === GET TV SHOWS ===
+        try:
+            stdscr.addstr(0, 0, "Loading TV shows...", curses.A_BOLD)
             stdscr.refresh()
 
-            seasons = requests.get(
-                f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
+            shows = requests.get(
+                f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Series&Recursive=true",
+                headers=headers,
             ).json()["Items"]
 
-            if not seasons:
+            if not shows:
                 cleanup()
-                print("No seasons found.")
+                print("No shows found.")
                 exit()
 
             while True:
-                selected_season = select_from_list(seasons, f"{show_name}", allow_escape_up=True)
-                if selected_season == -1:
-                    break  # Go back to shows list
-                season_id = seasons[selected_season]["Id"]
-                season_name = seasons[selected_season]["Name"]
+                selected_show = select_from_list(shows, "TV Shows", allow_escape_up=True)
+                if selected_show == -1:
+                    break  # Go back to media type selection
+                show_id = shows[selected_show]["Id"]
+                show_name = shows[selected_show]["Name"]
 
-                # === GET EPISODES ===
-                stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
-                stdscr.refresh()
+                # === GET SEASONS ===
+                while True:
+                    stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
+                    stdscr.refresh()
 
-                episodes = requests.get(
-                    f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
-                    headers=headers,
-                ).json()["Items"]
+                    seasons = requests.get(
+                        f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
+                    ).json()["Items"]
 
-                if not episodes:
-                    cleanup()
-                    print("No episodes found.")
-                    exit()
-                
-                for idx, episode in enumerate(episodes, 1):
-                    episode["Name"] = f"{idx}. {episode['Name']}"
+                    if not seasons:
+                        cleanup()
+                        print("No seasons found.")
+                        exit()
 
+                    selected_season = select_from_list(seasons, f"{show_name}", allow_escape_up=True)
+                    if selected_season == -1:
+                        break  # Go back to shows list
+                    season_id = seasons[selected_season]["Id"]
+                    season_name = seasons[selected_season]["Name"]
 
-                selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
-                if selected_episode == -1:
-                    continue  # Go back to seasons list
-                
-                item_id = episodes[selected_episode]["Id"]
-                item_name = episodes[selected_episode]["Name"]
-                break  # Exit season loop to start playback
+                    # === GET EPISODES ===
+                    stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
+                    stdscr.refresh()
 
-            if selected_episode != -1:
-                break  # Exit show loop to start playback
+                    episodes = requests.get(
+                        f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
+                        headers=headers,
+                    ).json()["Items"]
 
-    except Exception as e:
-        cleanup()
-        raise
+                    if not episodes:
+                        cleanup()
+                        print("No episodes found.")
+                        exit()
+                    
+                    for idx, episode in enumerate(episodes, 1):
+                        episode["Name"] = f"{idx}. {episode['Name']}"
 
-elif media_type == "Movie":
-    # === GET MOVIES ===
-    try:
-        stdscr.addstr(0, 0, "Loading movies...", curses.A_BOLD)
-        stdscr.refresh()
-
-        movies = requests.get(
-            f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Movie&Recursive=true",
-            headers=headers,
-        ).json()["Items"]
-
-        if not movies:
+                    selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
+                    if selected_episode == -1:
+                        continue  # Go back to seasons list
+                    
+                    item_id = episodes[selected_episode]["Id"]
+                    item_name = episodes[selected_episode]["Name"]
+                    
+                    # Play the selected episode
+                    play_item(item_id, item_name)
+                    
+                    # After playback, we'll automatically return to the seasons list
+                    # because we're in the seasons while loop
+        except Exception as e:
             cleanup()
-            print("No movies found.")
+            print(f"Error loading TV shows: {e}")
             exit()
 
-        selected_movie = select_from_list(movies, "Movies", allow_escape_up=False)
-        item_id = movies[selected_movie]["Id"]
-        item_name = movies[selected_movie]["Name"]
-
-    except Exception as e:
-        cleanup()
-        raise
-
-# Clean up curses before starting playback
-cleanup()
-
-# === PLAYBACK CODE ===
-try:
-    stream_url = f"{JELLYFIN_URL}/Items/{item_id}/Download?api_key={token}"
-
-    # === START PLAYBACK SESSION ===
-    requests.post(
-        f"{JELLYFIN_URL}/Sessions/Playing",
-        headers=headers,
-        json={
-            "ItemId": item_id,
-            "CanSeek": True,
-            "IsPaused": True,
-            "IsMuted": False,
-            "PlaybackStartTimeTicks": 0,
-            "PlayMethod": "DirectStream",
-        },
-    )
-
-    # === MPV IPC ===
-    ipc_path = tempfile.NamedTemporaryFile(delete=False).name
-    playback_info = requests.get(
-        f"{JELLYFIN_URL}/Users/{user_id}/Items/{item_id}", headers=headers
-    ).json()
-
-    start_position_ticks = playback_info.get("UserData", {}).get(
-        "PlaybackPositionTicks", 0
-    )
-    start_position_seconds = (
-        start_position_ticks // 10_000_000
-    )  # Convert ticks to seconds
-
-    print(
-        f"Starting playback of '{item_name}' from {start_position_seconds} seconds..."
-    )
-
-    mpv_proc = subprocess.Popen(
-        [
-            "mpv",
-            stream_url,
-            f"--input-ipc-server={ipc_path}",
-            "--slang=en",
-            "--alang=ja",
-            f"--start={start_position_seconds}",
-            "--fs",
-        ]
-    )
-
-    import errno
-
-    sock = socket.socket(socket.AF_UNIX)
-
-    timeout = time.time() + 5  # wait max 5 seconds
-    while True:
+    elif media_type == "Movie":
+        # === GET MOVIES ===
         try:
-            if os.path.exists(ipc_path):
-                sock.connect(ipc_path)
-                break
-        except socket.error as e:
-            if e.errno != errno.ECONNREFUSED:
-                raise
-        if time.time() > timeout:
-            raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
-        time.sleep(0.1)
+            stdscr.addstr(0, 0, "Loading movies...", curses.A_BOLD)
+            stdscr.refresh()
 
-    def send_ipc_command(command):
-        try:
-            msg = json.dumps({"command": command})
-            sock.sendall((msg + "\n").encode())
-            response = b""
-            while not response.endswith(b"\n"):
-                response += sock.recv(4096)
-            return json.loads(response.decode())
-        except Exception as e:
-            print(f"IPC command failed: {e}")
-            return None
-
-    def get_position():
-        result = send_ipc_command(["get_property", "playback-time"])
-        if result and "data" in result and isinstance(result["data"], (int, float)):
-            return result["data"]
-        return None
-
-    def get_playback_status():
-        result = send_ipc_command(["get_property", "pause"])
-        if result and "data" in result and isinstance(result["data"], bool):
-            return not result["data"]  # Return True if playing, False if paused
-        return None
-
-    # === SIMPLE PROGRESS REPORTING ===
-    def report_progress():
-        while mpv_proc.poll() is None:  # While MPV is running
-            try:
-                current_pos = get_position()
-                if current_pos is not None:
-                    try:
-                        requests.post(
-                            f"{JELLYFIN_URL}/Sessions/Playing/Progress",
-                            headers=headers,
-                            json={
-                                "ItemId": item_id,
-                                "PositionTicks": int(current_pos * 10_000_000),
-                            },
-                            timeout=2,  # Short timeout to prevent hanging
-                        )
-                        print(
-                            f"↻ Current progress: {current_pos:.1f} seconds", end="\r"
-                        )
-                    except requests.exceptions.RequestException as e:
-                        print(f"⚠ Progress report failed: {e}")
-                time.sleep(2)  # Report progress every 2 seconds
-            except Exception as e:
-                print(f"⚠ Unexpected error in progress reporting: {e}")
-                time.sleep(2)
-
-    progress_thread = threading.Thread(target=report_progress, daemon=True)
-    progress_thread.start()
-
-    mpv_proc.wait()
-
-    # === STOP SESSION ===
-    try:
-        final_pos = get_position()
-        if final_pos is not None:
-            requests.post(
-                f"{JELLYFIN_URL}/Sessions/Playing/Stopped",
+            movies = requests.get(
+                f"{JELLYFIN_URL}/Users/{user_id}/Items?IncludeItemTypes=Movie&Recursive=true",
                 headers=headers,
-                json={
-                    "ItemId": item_id,
-                    "PositionTicks": int(final_pos * 10_000_000),
-                    "MediaSourceId": item_id,
-                },
-            )
-            print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
-    except Exception as e:
-        print(f"\n⚠ Failed to send stop notification: {e}")
+            ).json()["Items"]
 
-    sock.close()
-    try:
-        os.unlink(ipc_path)
-    except:
-        pass
+            if not movies:
+                cleanup()
+                print("No movies found.")
+                exit()
 
-except Exception as e:
-    print(f"\n⚠ Error during playback: {e}")
-    cleanup()
-    raise
+            while True:
+                selected_movie = select_from_list(movies, "Movies", allow_escape_up=True)
+                if selected_movie == -1:
+                    break  # Go back to media type selection
+                item_id = movies[selected_movie]["Id"]
+                item_name = movies[selected_movie]["Name"]
+                
+                # Play the selected movie
+                play_item(item_id, item_name)
+                
+                # After playback, we'll return to the movies list
+                # because we're in the movies while loop
+        except Exception as e:
+            cleanup()
+            print(f"Error loading movies: {e}")
+            exit()
