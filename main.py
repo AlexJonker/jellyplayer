@@ -482,8 +482,8 @@ def play_item(item_id, item_name):
                 "mpv",
                 stream_url,
                 f"--input-ipc-server={ipc_path}",
-                "--slang=en",
-                "--alang=ja",
+                # "--slang=en", # subs
+                # "--alang=ja", # audio
                 f"--start={start_position_seconds}",
                 "--fs",
             ]
