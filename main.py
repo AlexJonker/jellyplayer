@@ -625,62 +625,60 @@ while True:
                 print("No shows found.")
                 exit()
 
+            selected_show = select_from_list(shows, "TV Shows", allow_escape_up=True)
+            if selected_show == -1:
+                continue  # Go back to media type selection
+            show_id = shows[selected_show]["Id"]
+            show_name = shows[selected_show]["Name"]
+
+            # === GET SEASONS ===
+            stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
+            stdscr.refresh()
+
+            seasons = requests.get(
+                f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
+            ).json()["Items"]
+
+            if not seasons:
+                cleanup()
+                print("No seasons found.")
+                exit()
+
+            selected_season = select_from_list(seasons, f"{show_name}", allow_escape_up=True)
+            if selected_season == -1:
+                continue  # Go back to shows list
+            season_id = seasons[selected_season]["Id"]
+            season_name = seasons[selected_season]["Name"]
+
+            # === EPISODE LOOP (stays in current season after playback) ===
             while True:
-                selected_show = select_from_list(shows, "TV Shows", allow_escape_up=True)
-                if selected_show == -1:
-                    break  # Go back to media type selection
-                show_id = shows[selected_show]["Id"]
-                show_name = shows[selected_show]["Name"]
+                stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
+                stdscr.refresh()
 
-                # === GET SEASONS ===
-                while True:
-                    stdscr.addstr(0, 0, "Loading seasons...", curses.A_BOLD)
-                    stdscr.refresh()
+                episodes = requests.get(
+                    f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
+                    headers=headers,
+                ).json()["Items"]
 
-                    seasons = requests.get(
-                        f"{JELLYFIN_URL}/Shows/{show_id}/Seasons", headers=headers
-                    ).json()["Items"]
+                if not episodes:
+                    cleanup()
+                    print("No episodes found.")
+                    exit()
 
-                    if not seasons:
-                        cleanup()
-                        print("No seasons found.")
-                        exit()
+                for idx, episode in enumerate(episodes, 1):
+                    episode["Name"] = f"{idx}. {episode['Name']}"
 
-                    selected_season = select_from_list(seasons, f"{show_name}", allow_escape_up=True)
-                    if selected_season == -1:
-                        break  # Go back to shows list
-                    season_id = seasons[selected_season]["Id"]
-                    season_name = seasons[selected_season]["Name"]
+                selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
+                if selected_episode == -1:
+                    break  # Exit episode loop, go back to season selection
+                
+                item_id = episodes[selected_episode]["Id"]
+                item_name = episodes[selected_episode]["Name"]
 
-                    # === GET EPISODES ===
-                    stdscr.addstr(0, 0, "Loading episodes...", curses.A_BOLD)
-                    stdscr.refresh()
+                # Play the selected episode
+                play_item(item_id, item_name)
 
-                    episodes = requests.get(
-                        f"{JELLYFIN_URL}/Shows/{show_id}/Episodes?seasonId={season_id}",
-                        headers=headers,
-                    ).json()["Items"]
-
-                    if not episodes:
-                        cleanup()
-                        print("No episodes found.")
-                        exit()
-                    
-                    for idx, episode in enumerate(episodes, 1):
-                        episode["Name"] = f"{idx}. {episode['Name']}"
-
-                    selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
-                    if selected_episode == -1:
-                        continue  # Go back to seasons list
-                    
-                    item_id = episodes[selected_episode]["Id"]
-                    item_name = episodes[selected_episode]["Name"]
-                    
-                    # Play the selected episode
-                    play_item(item_id, item_name)
-                    
-                    # After playback, we'll automatically return to the seasons list
-                    # because we're in the seasons while loop
+                # After playback, loop continues, showing the same season's episodes again
         except Exception as e:
             cleanup()
             print(f"Error loading TV shows: {e}")
