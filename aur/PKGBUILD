@@ -23,5 +23,9 @@ package() {
 
   # Install the resulting binary
   install -Dm755 "dist/jellyplayer" "$pkgdir/usr/bin/jellyplayer"
+
+  # Install MPV config
+  install -d "$pkgdir/usr/share/jellyplayer/mpv_config"
+  cp -r mpv_config/* "$pkgdir/usr/share/jellyplayer/mpv_config/"
 }
 

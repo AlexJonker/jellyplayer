@@ -486,6 +486,7 @@ def play_item(item_id, item_name):
                 # "--alang=ja", # audio
                 f"--start={start_position_seconds}",
                 "--fs",
+                "--config-dir=/usr/share/jellyplayer/mpv_config",
             ]
         )
 
