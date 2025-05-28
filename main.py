@@ -399,32 +399,67 @@ def display_menu(items, title, selected_index=0, status_msg=""):
     stdscr.refresh()
 
 
+
 def select_from_list(items, title, allow_escape_up=False):
     selected_index = 0
-    status_msg = "↑/↓: Navigate | Enter: Select | Q: Quit"
+    filtered_items = items[:]
+    search_query = ""
+    status_msg = "↑/↓: Navigate | Enter: Select | Q: Quit | /: Search"
     if allow_escape_up:
         status_msg += " | ESC: Go Back"
-    display_menu(items, title, selected_index, status_msg)
+
+    def filter_items(query):
+        return [item for item in items if query.lower() in item["Name"].lower()]
+
+    display_menu(filtered_items, title, selected_index, status_msg)
 
     while True:
         try:
             key = stdscr.getch()
-            if key == curses.KEY_UP and selected_index > 0:
+
+            if key == ord('/'):  # Begin search
+                search_query = ""
+                stdscr.addstr(curses.LINES - 2, 0, "Search: ")
+                stdscr.clrtoeol()
+                curses.echo()
+                while True:
+                    ch = stdscr.getch()
+                    if ch in [10, 13]:  # Enter
+                        break
+                    elif ch in [27]:  # ESC to cancel
+                        search_query = ""
+                        break
+                    elif ch in [curses.KEY_BACKSPACE, 127]:
+                        search_query = search_query[:-1]
+                    else:
+                        try:
+                            search_query += chr(ch)
+                        except:
+                            pass
+                    filtered_items = filter_items(search_query)
+                    selected_index = 0
+                    stdscr.addstr(curses.LINES - 2, 0, f"Search: {search_query}")
+                    stdscr.clrtoeol()
+                    display_menu(filtered_items, title, selected_index, f"Search: {search_query}")
+                curses.noecho()
+                display_menu(filtered_items, title, selected_index, status_msg)
+
+            elif key == curses.KEY_UP and selected_index > 0:
                 selected_index -= 1
-                display_menu(items, title, selected_index, status_msg)
-            elif key == curses.KEY_DOWN and selected_index < len(items) - 1:
+                display_menu(filtered_items, title, selected_index, status_msg)
+            elif key == curses.KEY_DOWN and selected_index < len(filtered_items) - 1:
                 selected_index += 1
-                display_menu(items, title, selected_index, status_msg)
-            elif key == curses.KEY_ENTER or key in [10, 13]:  # Enter key
-                return selected_index
-            elif key == 27 and allow_escape_up:  # ESC key - only allowed when going back is possible
-                return -1  # Special value to indicate going back
-            elif key in [ord('q'), ord('Q')]:  # Q key
+                display_menu(filtered_items, title, selected_index, status_msg)
+            elif key == curses.KEY_ENTER or key in [10, 13]:
+                if filtered_items:
+                    return items.index(filtered_items[selected_index])
+            elif key == 27 and allow_escape_up:
+                return -1
+            elif key in [ord('q'), ord('Q')]:
                 cleanup()
                 os._exit(0)
         except Exception as e:
-            display_menu(items, title, selected_index, f"Error: {str(e)}")
-
+            display_menu(filtered_items, title, selected_index, f"Error: {str(e)}")
     return selected_index
 
 
