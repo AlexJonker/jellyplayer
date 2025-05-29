@@ -701,8 +701,9 @@ while True:
                     print("No episodes found.")
                     exit()
 
-                for idx, episode in enumerate(episodes, 1):
-                    episode["Name"] = f"{idx}. {episode['Name']}"
+                for episode in episodes:
+                    episode_number = episode.get("IndexNumber", 0)
+                    episode["Name"] = f"{episode_number}. {episode['Name']}"
 
                 selected_episode = select_from_list(episodes, f"{season_name}", allow_escape_up=True)
                 if selected_episode == -1:
