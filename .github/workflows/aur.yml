@@ -64,6 +64,6 @@ jobs:
 
           sudo -u auruser git add -A
           git config --global --add safe.directory /home/auruser/aur-repo
-          commit_hash=$(git rev-parse --short=7 HEAD)
+          commit_hash=$(git rev-parse --short "${{ github.sha }}")
           sudo -u auruser git commit -m "Update to commit $commit_hash"
           sudo -u auruser git push
