@@ -38,12 +38,12 @@ jobs:
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
           git config --global --add safe.directory /__w/playfin/playfin
-          commit_hash=$(printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)")
+          version=$(printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)")
           sudo -u auruser bash -c "
             git config --global user.name 'GitHub Actions'
             git config --global user.email 'github-actions@playfin'
             cd aur
-            sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD
+            sed -i \"s/^pkgver=.*/pkgver=$version/\" PKGBUILD
             makepkg --printsrcinfo > .SRCINFO
           "
           echo '-----------------------------------------------------------'
@@ -65,6 +65,6 @@ jobs:
 
           sudo -u auruser git add -A
           git config --global --add safe.directory /home/auruser/aur-repo
-          commit_hash=$(git rev-parse --short "${{ github.sha }}")
+          commit_hash=$(git rev-parse --short "$(git rev-parse --short=7 HEAD)")
           sudo -u auruser git commit -m "Update to commit $commit_hash"
           sudo -u auruser git push
