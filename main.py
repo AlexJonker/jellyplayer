@@ -28,7 +28,7 @@ if curses.has_colors():
         4, curses.COLOR_YELLOW, curses.COLOR_BLACK
     )  # Partially watched items
 
-CONFIG_FILE = str(Path.home() / ".config/jellyplayer/config.json")
+CONFIG_FILE = str(Path.home() / ".config/playfin/config.json")
 CONFIG_DIR = Path(CONFIG_FILE).parent
 
 # Create the config directory if it doesn't exist
@@ -190,7 +190,7 @@ except Exception as e:
 try:
     device_id = os.uname().nodename
     device = os.uname().sysname
-    auth_header = f'MediaBrowser Client="JELLYPLAYER", Device="{device}", DeviceId="{device_id}", Version="0.1"'
+    auth_header = f'MediaBrowser Client="playfin", Device="{device}", DeviceId="{device_id}", Version="0.1"'
     headers = {"Authorization": auth_header}
 
     stdscr.addstr(0, 0, "Logging in to Jellyfin...", curses.A_BOLD)
@@ -521,7 +521,7 @@ def play_item(item_id, item_name):
                 # "--alang=ja", # audio
                 f"--start={start_position_seconds}",
                 "--fs",
-                "--config-dir=/usr/share/jellyplayer/mpv_config",
+                "--config-dir=/usr/share/playfin/mpv_config",
             ]
         )
 

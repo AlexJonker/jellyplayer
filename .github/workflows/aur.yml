@@ -28,7 +28,7 @@ jobs:
       - name: Set git identity
         run: |
           git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@jellyplayer"
+          git config --global user.email "github-actions@playfin"
 
       - name: Get short commit hash
         id: vars
@@ -41,11 +41,11 @@ jobs:
           
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
-          git config --global --add safe.directory /__w/jellyplayer/jellyplayer
+          git config --global --add safe.directory /__w/playfin/playfin
           commit_hash=$(git rev-parse --short "${{ github.sha }}")
           sudo -u auruser bash -c "
             git config --global user.name 'GitHub Actions'
-            git config --global user.email 'github-actions@jellyplayer'
+            git config --global user.email 'github-actions@playfin'
             cd aur
             sed -i 's/^pkgver=.*/pkgver=$commit_hash/' PKGBUILD
             makepkg --printsrcinfo > .SRCINFO
@@ -63,7 +63,7 @@ jobs:
           sudo -u auruser chmod 600 /home/auruser/.ssh/id_ed25519
           sudo -u auruser ssh-keyscan aur.archlinux.org >> /home/auruser/.ssh/known_hosts
 
-          sudo -u auruser git clone ssh://aur@aur.archlinux.org/jellyplayer-git.git /home/auruser/aur-repo
+          sudo -u auruser git clone ssh://aur@aur.archlinux.org/playfin.git /home/auruser/aur-repo
           sudo -u auruser cp -r aur/. /home/auruser/aur-repo/
           cd /home/auruser/aur-repo
 

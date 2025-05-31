@@ -1,6 +1,6 @@
-# JellyPlayer
+# playfin
 
-JellyPlayer is a tui and user-friendly media player built with Python. It uses `mpv` for media playback.
+playfin is a tui and user-friendly media player built with Python. It uses `mpv` for media playback.
 
 ## Features
 
@@ -11,14 +11,14 @@ JellyPlayer is a tui and user-friendly media player built with Python. It uses `
 
 ### Option 1: Arch-Based Linux Distributions
 
-For Arch-based Linux distributions, you can install JellyPlayer directly from the AUR:
+For Arch-based Linux distributions, you can install playfin directly from the AUR:
 ```bash
-yay -S jellyplayer-git
+yay -S playfin
 ```
 
-Once installed, you can run JellyPlayer using the following command:
+Once installed, you can run playfin using the following command:
 ```bash
-jellyplayer
+playfin
 ```
 
 ### Option 2: Manual Installation
@@ -31,8 +31,8 @@ Ensure `mpv` is installed on your system:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/AlexJonker/jellyplayer
-    cd jellyplayer
+    git clone https://github.com/AlexJonker/playfin
+    cd playfin
     ```
 
 2. Install the required Python dependencies:
@@ -40,11 +40,11 @@ Ensure `mpv` is installed on your system:
     pip install -r requirements.txt
     ```
 
-3. Run JellyPlayer:
+3. Run playfin:
     ```bash
-    python jellyplayer.py
+    python playfin.py
     ```
 
     ### Configuration
 
-    The config is stored at `~/.config/jellyplayer/config.json`
+    The config is stored at `~/.config/playfin/config.json`
