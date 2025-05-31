@@ -47,9 +47,8 @@ jobs:
             makepkg --printsrcinfo > .SRCINFO
           "
           echo '-----------------------------------------------------------'
-          cat aur/PKGBUILD
-          echo '-----------------------------------------------------------'
-          cat aur/.SRCINFO
+          echo $version
+          printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)
           echo '-----------------------------------------------------------'
 
       - name: Push to AUR
