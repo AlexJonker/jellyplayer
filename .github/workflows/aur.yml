@@ -46,10 +46,8 @@ jobs:
             sed -i \"s/^pkgver=.*/pkgver=$version/\" PKGBUILD
             makepkg --printsrcinfo > .SRCINFO
           "
-          echo '-----------------------------------------------------------'
           echo $version
-          printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
-          echo '-----------------------------------------------------------'
+          git rev-list --count HEAD
 
       - name: Push to AUR
         run: |
