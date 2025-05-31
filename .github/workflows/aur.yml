@@ -30,10 +30,6 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "github-actions@playfin"
 
-      - name: Get short commit hash
-        id: vars
-        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Update permissions for auruser
         run: |
           sudo chown -R auruser:auruser aur
@@ -42,7 +38,7 @@ jobs:
       - name: Update PKGBUILD and regenerate .SRCINFO
         run: |
           git config --global --add safe.directory /__w/playfin/playfin
-          commit_hash=$(git rev-parse --short "${{ github.sha }}")
+          commit_hash=$(printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)")
           sudo -u auruser bash -c "
             git config --global user.name 'GitHub Actions'
             git config --global user.email 'github-actions@playfin'
