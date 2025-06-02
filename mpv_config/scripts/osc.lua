@@ -130,7 +130,7 @@ local language = {
 		nochapter = 'Brak rozdziałów.',
 	}
 }
--- read options from config and command-line
+-- read options from configs and command-line
 opt.read_options(user_opts, 'osc', function(list) update_options(list) end)
 -- apply lang opts
 local texts = language[user_opts.language]
