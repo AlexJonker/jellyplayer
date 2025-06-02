@@ -1,28 +1,10 @@
+# configs.py
 import os
 import json
 import curses
 import time
-from ui import *
-
-from pathlib import Path
-CONFIG_FILE = str(Path.home() / ".config/playfin/config.json")
-
-from encryption import *
-# Get credentials
-try:
-    config = get_credentials(CONFIG_FILE)
-    JELLYFIN_URL = config["JELLYFIN_URL"]
-    JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
-    JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
-except Exception as e:
-    cleanup()
-    raise ValueError(f"Failed to get credentials: {str(e)}")
-
-from encryption import *
-from ui import *
-
-stdscr = init_curses()
-
+from constants import CONFIG_FILE
+from encryption import generate_key, encrypt_password, decrypt_password
 
 def load_config(CONFIG_FILE):
     """Load config from file or create a new one with a generated key."""
@@ -42,7 +24,6 @@ def load_config(CONFIG_FILE):
         stdscr.refresh()
         time.sleep(2)
         return None
-
 
 def save_config(config, CONFIG_FILE):
     """Save config to file with encrypted password and generated key."""
@@ -65,4 +46,3 @@ def save_config(config, CONFIG_FILE):
         stdscr.refresh()
         time.sleep(2)
         return False
-    

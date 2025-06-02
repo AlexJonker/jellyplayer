@@ -1,53 +1,28 @@
-import os
-import requests
+# main.py
+from constants import CONFIG_FILE
 import curses
-import signal
-from pathlib import Path
+from ui import init_curses, cleanup
+from encryption import get_credentials
 
-CONFIG_FILE = str(Path.home() / ".config/playfin/config.json")
-CONFIG_DIR = Path(CONFIG_FILE).parent
-
-# Create the config directory if it doesn't exist
-if not CONFIG_DIR.exists():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-#import other files
-from configs import *
-from ui import *
-from cache import *
-from mpv import *
-
-
-def signal_handler(sig, frame):
-    """Handle Ctrl+C interrupt"""
-    cleanup()
-    os._exit(0)
-
-
-signal.signal(signal.SIGINT, signal_handler)
-
-
-# Get credentials
-from encryption import *
+# Initialize curses first
+stdscr = init_curses()
 
 try:
-    config = get_credentials(CONFIG_FILE)
+    # Get credentials with the initialized stdscr
+    config = get_credentials(CONFIG_FILE, stdscr)
     JELLYFIN_URL = config["JELLYFIN_URL"]
     JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
     JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
 except Exception as e:
     cleanup()
-    raise ValueError(f"Failed to get credentials: {str(e)}")
+    print(f"Failed to get credentials: {str(e)}")
+    exit(1)
 
-
-
-
-
-#import other files
-from configs import *
+# Now import other modules that need these credentials
 from ui import *
 from cache import *
-from mpv import *
+import requests
+import os
 
 
 # === LOGIN ===
@@ -104,7 +79,11 @@ while True:
                 print("No shows found.")
                 exit()
 
-            selected_show = select_from_list(shows, "TV Shows", allow_escape_up=True)
+            selected_show = select_from_list(
+                shows, "TV Shows", 
+                allow_escape_up=True,
+                headers=headers
+            )
             if selected_show == -1:
                 continue  # Go back to media type selection
             show_id = shows[selected_show]["Id"]

@@ -1,6 +1,6 @@
 import curses
 import os
-from cache import *
+from cache import get_cached_show_status, get_cached_season_status
 
 def init_curses():
     # Initialize curses
@@ -25,8 +25,7 @@ def init_curses():
 stdscr = init_curses()
 
 
-
-def get_input(prompt, hidden=False):
+def get_input(stdscr, prompt, hidden=False):
     """Get user input with curses"""
     stdscr.clear()
     h, w = stdscr.getmaxyx()
@@ -65,7 +64,7 @@ def cleanup():
     curses.echo()
     curses.endwin()
 
-def display_menu(items, title, selected_index=0, status_msg=""):
+def display_menu(items, title, selected_index=0, status_msg="", headers=None):
     stdscr.clear()
     h, w = stdscr.getmaxyx()
 
@@ -107,13 +106,14 @@ def display_menu(items, title, selected_index=0, status_msg=""):
         # Get status from cache if needed
         if "Id" in item and not (is_watched or is_partial):
             if item.get("Type") == "Series":
-                status = get_cached_show_status(item["Id"], headers)
+                status = get_cached_show_status(item["Id"], headers, JELLYFIN_URL)
                 has_watched = status["watched"]
                 has_partial = status["partial"]
             elif item.get("Type") == "Season":
-                status = get_cached_season_status(item.get("SeriesId", ""), item["Id"], headers)
+                status = get_cached_season_status(item.get("SeriesId", ""), item["Id"], headers, JELLYFIN_URL)
                 has_watched = status["watched"]
                 has_partial = status["partial"]
+        
             else:
                 has_watched = False
                 has_partial = False
@@ -167,7 +167,7 @@ def display_menu(items, title, selected_index=0, status_msg=""):
 
 
 
-def select_from_list(items, title, allow_escape_up=False):
+def select_from_list(items, title, allow_escape_up=False, headers=None):
     selected_index = 0
     filtered_items = items[:]
     search_query = ""
@@ -178,7 +178,7 @@ def select_from_list(items, title, allow_escape_up=False):
     def filter_items(query):
         return [item for item in items if query.lower() in item["Name"].lower()]
 
-    display_menu(filtered_items, title, selected_index, status_msg)
+    display_menu(filtered_items, title, selected_index, status_msg, headers)
 
     while True:
         try:

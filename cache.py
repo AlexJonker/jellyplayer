@@ -1,31 +1,18 @@
 import requests
-from ui import *
-
 from pathlib import Path
-CONFIG_FILE = str(Path.home() / ".config/playfin/config.json")
-
-from encryption import *
-# Get credentials
-try:
-    config = get_credentials(CONFIG_FILE)
-    JELLYFIN_URL = config["JELLYFIN_URL"]
-    JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
-    JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
-except Exception as e:
-    cleanup()
-    raise ValueError(f"Failed to get credentials: {str(e)}")
+from constants import CONFIG_FILE
 
 show_watch_cache = {}
 season_watch_cache = {}
 
 
-def cache_show_watch_status(show_id, headers):
+def cache_show_watch_status(show_id, headers, jellyfin_url):
     """Cache all watch status for a show and its seasons"""
     if show_id in show_watch_cache:
         return
 
     episodes = (
-        requests.get(f"{JELLYFIN_URL}/Shows/{show_id}/Episodes", headers=headers)
+        requests.get(f"{jellyfin_url}/Shows/{show_id}/Episodes", headers=headers)
         .json()
         .get("Items", [])
     )
@@ -83,18 +70,15 @@ def cache_show_watch_status(show_id, headers):
     }
 
 
-def get_cached_show_status(show_id, headers):
-    """Get cached watch status for a show"""
+def get_cached_show_status(show_id, headers, jellyfin_url):
     if show_id not in show_watch_cache:
-        cache_show_watch_status(show_id, headers)
+        cache_show_watch_status(show_id, headers, jellyfin_url)
     return show_watch_cache[show_id]
 
 
-def get_cached_season_status(show_id, season_id, headers):
-    """Get cached watch status for a season"""
+def get_cached_season_status(show_id, season_id, headers, jellyfin_url):
     if show_id not in show_watch_cache:
-        cache_show_watch_status(show_id, headers)
+        cache_show_watch_status(show_id, headers, jellyfin_url)
     return show_watch_cache[show_id]["seasons"].get(
         season_id, {"watched": False, "partial": False}
     )
-
