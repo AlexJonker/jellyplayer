@@ -65,33 +65,31 @@ def play_item(item_id, item_name, token, headers, user_id):
 
         import errno
 
-        sock = socket.socket(socket.AF_UNIX)
+        with socket.socket(socket.AF_UNIX) as sock:
+            timeout = time.time() + 5  # wait max 5 seconds
+            while True:
+                try:
+                    if os.path.exists(ipc_path):
+                        sock.connect(ipc_path)
+                        break
+                except socket.error as e:
+                    if e.errno != errno.ECONNREFUSED:
+                        raise
+                if time.time() > timeout:
+                    raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
+                time.sleep(0.1)
 
-        timeout = time.time() + 5  # wait max 5 seconds
-        while True:
-            try:
-                if os.path.exists(ipc_path):
-                    sock.connect(ipc_path)
-                    break
-            except socket.error as e:
-                if e.errno != errno.ECONNREFUSED:
-                    raise
-            if time.time() > timeout:
-                raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
-            time.sleep(0.1)
-
-        def send_ipc_command(command):
-            try:
-                msg = json.dumps({"command": command})
-                sock.sendall((msg + "\n").encode())
-                response = b""
-                while not response.endswith(b"\n"):
-                    response += sock.recv(4096)
-                return json.loads(response.decode())
-            except Exception as e:
-                print(f"IPC command failed: {e}")
-                return None
-
+            def send_ipc_command(command):
+                try:
+                    msg = json.dumps({"command": command})
+                    sock.sendall((msg + "\n").encode())
+                    response = b""
+                    while not response.endswith(b"\n"):
+                        response += sock.recv(4096)
+                    return json.loads(response.decode())
+                except Exception as e:
+                    print(f"IPC command failed: {e}")
+                    return None
         def get_position():
             result = send_ipc_command(["get_property", "playback-time"])
             if result and "data" in result and isinstance(result["data"], (int, float)):
