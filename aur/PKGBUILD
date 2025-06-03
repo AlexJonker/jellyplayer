@@ -7,8 +7,6 @@ url="https://github.com/AlexJonker/playfin"
 license=('MIT')
 depends=('mpv' 'python' 'python-requests')
 makedepends=('git' 'pyinstaller')
-conflicts=('jellyplayer-git')
-replaces=('jellyplayer-git')
 source=("git+$url.git")
 md5sums=('SKIP')
 
