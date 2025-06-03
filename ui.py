@@ -1,6 +1,10 @@
 import curses
 import os
+from constants import CONFIG_FILE
 from cache import get_cached_show_status, get_cached_season_status
+
+JELLYFIN_URL = "https://movies.meekcraft.net"
+
 
 def init_curses():
     # Initialize curses
@@ -26,7 +30,6 @@ stdscr = init_curses()
 
 
 def get_input(stdscr, prompt, hidden=False):
-    """Get user input with curses"""
     stdscr.clear()
     h, w = stdscr.getmaxyx()
     stdscr.addstr(h // 2 - 1, (w - len(prompt)) // 2, prompt)
@@ -58,7 +61,6 @@ def get_input(stdscr, prompt, hidden=False):
 
 
 def cleanup():
-    """Clean up curses and exit"""
     curses.nocbreak()
     stdscr.keypad(False)
     curses.echo()

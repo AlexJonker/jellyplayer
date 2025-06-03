@@ -7,25 +7,13 @@ import time
 import socket
 import json
 import threading
-from ui import *
+from config import *
 
-from pathlib import Path
-CONFIG_FILE = str(Path.home() / ".config/playfin/config.json")
+JELLYFIN_URL = "https://movies.meekcraft.net"
 
-from encryption import *
-# Get credentials
-try:
-    config = get_credentials(CONFIG_FILE)
-    JELLYFIN_URL = config["JELLYFIN_URL"]
-    JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
-    JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
-except Exception as e:
-    cleanup()
-    raise ValueError(f"Failed to get credentials: {str(e)}")
 
 
 def play_item(item_id, item_name, token, headers, user_id):
-    """Handle playback of an item and return to the appropriate menu"""
     cleanup()  # Clean up curses before playback
 
     try:

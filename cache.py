@@ -1,13 +1,12 @@
 import requests
 from pathlib import Path
-from constants import CONFIG_FILE
+from config import *
 
 show_watch_cache = {}
 season_watch_cache = {}
 
 
 def cache_show_watch_status(show_id, headers, jellyfin_url):
-    """Cache all watch status for a show and its seasons"""
     if show_id in show_watch_cache:
         return
 

@@ -1,13 +1,12 @@
-# configs.py
 import os
 import json
 import curses
 import time
 from constants import CONFIG_FILE
-from encryption import generate_key, encrypt_password, decrypt_password
+from encryption import encrypt_password, decrypt_password, generate_key
+from ui import init_curses, get_input
 
-def load_config(CONFIG_FILE):
-    """Load config from file or create a new one with a generated key."""
+def load_config():
     if not os.path.exists(CONFIG_FILE):
         return None
 
@@ -20,13 +19,9 @@ def load_config(CONFIG_FILE):
         config["JELLYFIN_PASSWORD"] = decrypt_password(config["JELLYFIN_PASSWORD"], key)
         return config
     except Exception as e:
-        stdscr.addstr(0, 0, f"Error loading config: {str(e)}", curses.color_pair(2))
-        stdscr.refresh()
-        time.sleep(2)
         return None
 
-def save_config(config, CONFIG_FILE):
-    """Save config to file with encrypted password and generated key."""
+def save_config(config):
     try:
         # Generate a key if it doesn't exist
         if "ENCRYPTION_KEY" not in config:
@@ -38,11 +33,34 @@ def save_config(config, CONFIG_FILE):
             config["JELLYFIN_PASSWORD"], config["ENCRYPTION_KEY"]
         )
 
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
         with open(CONFIG_FILE, "w") as f:
             json.dump(config_copy, f, indent=2)
         return True
     except Exception as e:
-        stdscr.addstr(0, 0, f"Error saving config: {str(e)}", curses.color_pair(2))
-        stdscr.refresh()
-        time.sleep(2)
         return False
+    
+
+def get_credentials():
+    stdscr = init_curses()
+    config = load_config()
+
+    if config:
+        return config
+
+    # Get new credentials
+    stdscr.clear()
+    config = {
+        "JELLYFIN_URL": get_input(
+            "Enter Jellyfin server URL (e.g., http://localhost:8096): "
+        ),
+        "JELLYFIN_USERNAME": get_input("Enter Jellyfin username: "),
+        "JELLYFIN_PASSWORD": get_input("Enter Jellyfin password: ", hidden=True),
+    }
+
+    if save_config(config):
+        stdscr.addstr(0, 0, "Credentials saved successfully!", curses.color_pair(1))
+        stdscr.refresh()
+        time.sleep(1)
+
+    return config

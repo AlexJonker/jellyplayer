@@ -1,15 +1,15 @@
 # main.py
-from constants import CONFIG_FILE
 import curses
-from ui import init_curses, cleanup
-from encryption import get_credentials
+from constants import CONFIG_FILE
+from config import get_credentials
+from ui import *
 
 # Initialize curses first
 stdscr = init_curses()
 
 try:
     # Get credentials with the initialized stdscr
-    config = get_credentials(CONFIG_FILE, stdscr)
+    config = get_credentials()
     JELLYFIN_URL = config["JELLYFIN_URL"]
     JELLYFIN_USERNAME = config["JELLYFIN_USERNAME"]
     JELLYFIN_PASSWORD = config["JELLYFIN_PASSWORD"]
@@ -19,8 +19,8 @@ except Exception as e:
     exit(1)
 
 # Now import other modules that need these credentials
-from ui import *
 from cache import *
+from mpv import *
 import requests
 import os
 
