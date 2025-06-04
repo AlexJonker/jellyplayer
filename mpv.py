@@ -65,19 +65,20 @@ def play_item(item_id, item_name, token, headers, user_id):
 
         import errno
 
-        with socket.socket(socket.AF_UNIX) as sock:
-            timeout = time.time() + 5  # wait max 5 seconds
-            while True:
-                try:
-                    if os.path.exists(ipc_path):
-                        sock.connect(ipc_path)
-                        break
-                except socket.error as e:
-                    if e.errno != errno.ECONNREFUSED:
-                        raise
-                if time.time() > timeout:
-                    raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
-                time.sleep(0.1)
+        sock = socket.socket(socket.AF_UNIX)
+
+        timeout = time.time() + 5  # wait max 5 seconds
+        while True:
+            try:
+                if os.path.exists(ipc_path):
+                    sock.connect(ipc_path)
+                    break
+            except socket.error as e:
+                if e.errno != errno.ECONNREFUSED:
+                    raise
+            if time.time() > timeout:
+                raise TimeoutError(f"Could not connect to MPV IPC socket at {ipc_path}")
+            time.sleep(0.1)
 
             def send_ipc_command(command):
                 try:
@@ -131,25 +132,34 @@ def play_item(item_id, item_name, token, headers, user_id):
         progress_thread = threading.Thread(target=report_progress, daemon=True)
         progress_thread.start()
 
-        mpv_proc.wait()
+        # ^C fix so that jellyfin doesnt keep playing the progress
+        try:
+            while mpv_proc.poll() is None:
+                time.sleep(0.1)
+        except KeyboardInterrupt:
+            print("\nCaught interrupt, stopping playback...")
+            mpv_proc.terminate()
+            try:
+                mpv_proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                mpv_proc.kill()
 
         # === STOP SESSION ===
         try:
-            final_pos = get_position()
-            if final_pos is not None:
-                requests.post(
-                    f"{JELLYFIN_URL}/Sessions/Playing/Stopped",
-                    headers=headers,
-                    json={
-                        "ItemId": item_id,
-                        "PositionTicks": int(final_pos * 10_000_000),
-                        "MediaSourceId": item_id,
-                    },
-                )
-                print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
+            final_pos = get_position() or 0  # Default to 0 if None
+            requests.post(
+                f"{JELLYFIN_URL}/Sessions/Playing/Stopped",
+                headers=headers,
+                json={
+                    "ItemId": item_id,
+                    "PositionTicks": int(final_pos * 10_000_000),
+                    "MediaSourceId": item_id,
+                },
+                timeout=3
+            )
+            print(f"\n⏹ Playback stopped at position: {final_pos:.1f} seconds")
         except Exception as e:
             print(f"\n⚠ Failed to send stop notification: {e}")
-
         sock.close()
         try:
             os.unlink(ipc_path)
