@@ -52,10 +52,11 @@ def get_credentials():
     stdscr.clear()
     config = {
         "JELLYFIN_URL": get_input(
+            stdscr,
             "Enter Jellyfin server URL (e.g., http://localhost:8096): "
         ),
-        "JELLYFIN_USERNAME": get_input("Enter Jellyfin username: "),
-        "JELLYFIN_PASSWORD": get_input("Enter Jellyfin password: ", hidden=True),
+        "JELLYFIN_USERNAME": get_input(stdscr, "Enter Jellyfin username: "),
+        "JELLYFIN_PASSWORD": get_input(stdscr, "Enter Jellyfin password: ", hidden=True),
     }
 
     if save_config(config):
