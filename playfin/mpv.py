@@ -1,5 +1,5 @@
 import os
-from ui import *
+from .ui import *
 import requests
 import tempfile
 import subprocess
@@ -7,7 +7,7 @@ import time
 import socket
 import json
 import threading
-from config import *
+from .config import *
 
 JELLYFIN_URL = "https://movies.meekcraft.net"
 

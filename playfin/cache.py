@@ -1,6 +1,6 @@
 import requests
 from pathlib import Path
-from config import *
+from .config import *
 
 show_watch_cache = {}
 season_watch_cache = {}

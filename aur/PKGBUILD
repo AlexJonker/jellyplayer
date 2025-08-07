@@ -5,8 +5,8 @@ pkgdesc="Terminal-based Jellyfin player with MPV integration"
 arch=('any')
 url="https://github.com/AlexJonker/playfin"
 license=('MIT')
-depends=('mpv' 'python' 'python-requests')
-makedepends=('git' 'pyinstaller')
+depends=('mpv' 'python' 'python-requests' 'python-dotenv')
+makedepends=('git' 'python-build' 'python-installer')
 source=("git+$url.git")
 md5sums=('SKIP')
 
@@ -15,13 +15,22 @@ pkgver() {
   printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
 }
 
+
+
+prepare() {
+  # Clean out old wheels etc.
+  git -C "$srcdir/playfin" clean -dfx
+}
+
+build() {
+  cd "$srcdir/playfin"
+  python -m build --wheel --no-isolation
+}
+
 package() {
   cd "$srcdir/playfin"
-
-  pyinstaller --onefile --strip --clean main.py -n playfin
-  
-  install -Dm755 "dist/playfin" "$pkgdir/usr/bin/playfin"
-
+  python -m installer --destdir="$pkgdir" dist/*.whl
   install -d "$pkgdir/usr/share/playfin/mpv_config"
   cp -r mpv_config/* "$pkgdir/usr/share/playfin/mpv_config/"
 }
+

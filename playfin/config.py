@@ -2,9 +2,9 @@ import os
 import json
 import curses
 import time
-from constants import CONFIG_FILE
-from encryption import encrypt_password, decrypt_password, generate_key
-from ui import init_curses, get_input
+from .constants import CONFIG_FILE
+from .encryption import encrypt_password, decrypt_password, generate_key
+from .ui import init_curses, get_input
 
 def load_config():
     if not os.path.exists(CONFIG_FILE):

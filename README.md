@@ -42,7 +42,7 @@ Ensure `mpv` is installed on your system:
 
 3. Run playfin:
     ```bash
-    python playfin.py
+    python -m playfin.main
     ```
 
     ### Configuration

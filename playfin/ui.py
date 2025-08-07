@@ -1,7 +1,7 @@
 import curses
 import os
-from constants import CONFIG_FILE
-from cache import get_cached_show_status, get_cached_season_status
+from .constants import CONFIG_FILE
+from .cache import get_cached_show_status, get_cached_season_status
 
 JELLYFIN_URL = "https://movies.meekcraft.net"
 

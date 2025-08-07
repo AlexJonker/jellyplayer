@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playfin"
+version = "1.0.0"
+description = "A CLI media player"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+  { name="Alex", email="alex@alexjonker.dev" }
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+playfin = "playfin.main:main"
+
+[tool.setuptools]
+packages = ["playfin"]

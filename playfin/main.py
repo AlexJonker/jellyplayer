@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 # main.py
 import curses
-from constants import CONFIG_FILE
-from config import get_credentials
-from ui import *
+from .constants import CONFIG_FILE
+from .config import get_credentials
+from .ui import *
 
 # Initialize curses first
 stdscr = init_curses()
@@ -19,8 +20,8 @@ except Exception as e:
     exit(1)
 
 # Now import other modules that need these credentials
-from cache import *
-from mpv import *
+from .cache import *
+from .mpv import *
 import requests
 import os
 
