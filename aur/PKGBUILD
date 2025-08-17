@@ -30,7 +30,5 @@ build() {
 package() {
   cd "$srcdir/playfin"
   python -m installer --destdir="$pkgdir" dist/*.whl
-  install -d "$pkgdir/usr/share/playfin/mpv_config"
-  cp -r mpv_config/* "$pkgdir/usr/share/playfin/mpv_config/"
 }
 

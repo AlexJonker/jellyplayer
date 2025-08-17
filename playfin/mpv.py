@@ -58,8 +58,7 @@ def play_item(item_id, item_name, token, headers, user_id):
                 # "--slang=en", # subs
                 # "--alang=ja", # audio
                 f"--start={start_position_seconds}",
-                "--fs",
-                "--config-dir=/usr/share/playfin/mpv_config",
+                "--fs"
             ]
         )
 
